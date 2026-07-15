@@ -70,12 +70,13 @@ func (s *Service) GetPerson(ctx context.Context, id string) (*contact.Person, er
 // ListPersonsOptions filters and orders ListPersons.
 type ListPersonsOptions struct {
 	Classification contact.Classification // zero value: no filter
+	Query          string                 // zero value: no filter; matched against name fields, case-insensitive substring
 	Page           page.Request
 }
 
 // ListPersons returns persons ordered by display name, optionally filtered
-// by classification. Contact points/aliases/tags are not preloaded — call
-// GetPerson for the full record.
+// by classification and/or a free-text name query. Contact points/aliases/
+// tags are not preloaded — call GetPerson for the full record.
 func (s *Service) ListPersons(ctx context.Context, opts ListPersonsOptions) (page.Result[contact.Person], error) {
 	const op = "contact.ListPersons"
 	req := page.NewRequest(opts.Page.Limit, opts.Page.Offset)
@@ -87,6 +88,11 @@ func (s *Service) ListPersons(ctx context.Context, opts ListPersonsOptions) (pag
 	if opts.Classification != "" {
 		query += ` JOIN entity_classifications ec ON ec.person_id = p.id AND ec.classification = ?`
 		args = append(args, string(opts.Classification))
+	}
+	if q := strings.TrimSpace(opts.Query); q != "" {
+		query += ` WHERE (p.display_name LIKE ? ESCAPE '\' COLLATE NOCASE OR p.given_name LIKE ? ESCAPE '\' COLLATE NOCASE OR p.family_name LIKE ? ESCAPE '\' COLLATE NOCASE)`
+		like := likePattern(q)
+		args = append(args, like, like, like)
 	}
 	query += ` ORDER BY p.display_name COLLATE NOCASE, p.id LIMIT ? OFFSET ?`
 	args = append(args, req.Limit+1, req.Offset)

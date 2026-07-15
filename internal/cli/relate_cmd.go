@@ -51,6 +51,7 @@ func relateAdd(ctx context.Context, iostreams IO, a *app.App, args []string) err
 	toOrg := fs.String("to-org", "", "target organization id")
 	relType := fs.String("type", "", "relationship type, e.g. colleague/friend/manager (required)")
 	notes := fs.String("notes", "", "free-text notes")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -61,38 +62,56 @@ func relateAdd(ctx context.Context, iostreams IO, a *app.App, args []string) err
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, rel)
+	return printResult(iostreams, *human, rel)
 }
 
 func relateOutgoing(ctx context.Context, iostreams IO, a *app.App, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("usage: symrelate relate outgoing <person-id>")
+	fs := flag.NewFlagSet("relate outgoing", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	list, err := a.Relationships.ListOutgoingFromPerson(ctx, args[0])
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate relate outgoing [--human] <person-id>")
+	}
+	list, err := a.Relationships.ListOutgoingFromPerson(ctx, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, list)
+	return printResult(iostreams, *human, list)
 }
 
 func relateIncomingPerson(ctx context.Context, iostreams IO, a *app.App, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("usage: symrelate relate incoming-person <person-id>")
+	fs := flag.NewFlagSet("relate incoming-person", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	list, err := a.Relationships.ListIncomingToPerson(ctx, args[0])
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate relate incoming-person [--human] <person-id>")
+	}
+	list, err := a.Relationships.ListIncomingToPerson(ctx, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, list)
+	return printResult(iostreams, *human, list)
 }
 
 func relateIncomingOrg(ctx context.Context, iostreams IO, a *app.App, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("usage: symrelate relate incoming-org <org-id>")
+	fs := flag.NewFlagSet("relate incoming-org", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	list, err := a.Relationships.ListIncomingToOrganization(ctx, args[0])
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate relate incoming-org [--human] <org-id>")
+	}
+	list, err := a.Relationships.ListIncomingToOrganization(ctx, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, list)
+	return printResult(iostreams, *human, list)
 }

@@ -32,10 +32,14 @@ introduced alongside the protection and export features.
 cmd/symrelate/         CLI entry point (main package only — no logic)
 internal/cli/          command dispatch; one file per subcommand,
                         self-registering via init()
+internal/mcp/           the MCP server (stdio JSON-RPC 2.0) — see docs/MCP.md
+internal/console/       the local web console (localhost HTTP) — see docs/CONSOLE.md
 internal/app/          the service boundary: wires storage + domain
-                        services for CLI (and, later, MCP) callers
+                        services for CLI, MCP and console callers
 internal/domain/        pure domain types and business rules, no SQL
 internal/service/       use-case orchestration on top of domain + storage
+internal/integration/   optional runtime-detected sibling-tool adapters
+                        (SymMemory, SymMeet)
 internal/storage/sqlite/ the only package allowed to open the database;
                         owns the embedded migrations
 internal/errs/          structured error vocabulary shared by every layer
@@ -43,11 +47,11 @@ internal/xdg/           XDG Base Directory path resolution
 internal/version/       build-time version metadata
 ```
 
-`internal/app` is the single boundary the CLI is allowed to depend on for
-behavior. CLI commands never import `internal/storage` or a service package
-directly; they call through `app.App`. This keeps the door open for an MCP
-server or another front end to reuse the exact same service layer without
-duplicating business rules.
+`internal/app` is the single boundary the CLI, MCP server and web console
+are allowed to depend on for behavior. None of the three front ends import
+`internal/storage` or a service package directly; they call through
+`app.App`, so there is exactly one implementation of every business rule
+across all three surfaces.
 
 ## Persistence
 
@@ -70,6 +74,7 @@ duplicating business rules.
 
 Diagnostic and progress output goes to **stderr**. **Stdout** is reserved
 for the actual result of a command (`version --json`'s JSON payload,
-`doctor`'s final `ok`/error line) so it stays parseable by scripts and,
-later, safe to reuse as an MCP transport without stdout being polluted by
+`doctor`'s final `ok`/error line) so it stays parseable by scripts and
+safe to use as the `symrelate mcp` JSON-RPC transport (see
+[`docs/MCP.md`](docs/MCP.md)) without stdout being polluted by
 human-readable log lines.

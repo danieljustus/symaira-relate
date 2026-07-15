@@ -51,6 +51,7 @@ func interactionAdd(ctx context.Context, iostreams IO, a *app.App, args []string
 	summary := fs.String("summary", "", "short summary (required)")
 	occurred := fs.String("occurred", "", "RFC3339 timestamp; defaults to now")
 	externalRef := fs.String("external-ref", "", "reference to an external artifact (required for external_reference)")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -79,7 +80,7 @@ func interactionAdd(ctx context.Context, iostreams IO, a *app.App, args []string
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, out)
+	return printResult(iostreams, *human, out)
 }
 
 func interactionList(ctx context.Context, iostreams IO, a *app.App, args []string) error {
@@ -87,6 +88,7 @@ func interactionList(ctx context.Context, iostreams IO, a *app.App, args []strin
 	fs.SetOutput(iostreams.Stderr)
 	person := fs.String("person", "", "person id")
 	org := fs.String("org", "", "organization id")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -104,7 +106,7 @@ func interactionList(ctx context.Context, iostreams IO, a *app.App, args []strin
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, list)
+	return printResult(iostreams, *human, list)
 }
 
 func interactionLast(ctx context.Context, iostreams IO, a *app.App, args []string) error {
@@ -112,6 +114,7 @@ func interactionLast(ctx context.Context, iostreams IO, a *app.App, args []strin
 	fs.SetOutput(iostreams.Stderr)
 	person := fs.String("person", "", "person id")
 	org := fs.String("org", "", "organization id")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -133,5 +136,5 @@ func interactionLast(ctx context.Context, iostreams IO, a *app.App, args []strin
 		fmt.Fprintln(iostreams.Stdout, "null")
 		return nil
 	}
-	return printJSON(iostreams, last)
+	return printResult(iostreams, *human, last)
 }

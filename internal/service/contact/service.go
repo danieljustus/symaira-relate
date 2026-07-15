@@ -7,6 +7,7 @@ package contact
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,6 +26,14 @@ func New(db *sql.DB) *Service {
 
 func newID() string {
 	return uuid.NewString()
+}
+
+// likePattern turns a free-text query into a substring LIKE pattern,
+// escaping the two SQL wildcard characters so a literal "%" or "_" in a
+// name search cannot be mistaken for a wildcard.
+func likePattern(q string) string {
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(q)
+	return "%" + escaped + "%"
 }
 
 func now() time.Time {

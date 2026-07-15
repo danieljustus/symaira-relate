@@ -51,6 +51,7 @@ func followUpAdd(ctx context.Context, iostreams IO, a *app.App, args []string) e
 	org := fs.String("org", "", "organization id")
 	due := fs.String("due", "", "RFC3339 due date (required)")
 	notes := fs.String("notes", "", "free-text notes")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -72,7 +73,7 @@ func followUpAdd(ctx context.Context, iostreams IO, a *app.App, args []string) e
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, out)
+	return printResult(iostreams, *human, out)
 }
 
 func followUpList(ctx context.Context, iostreams IO, a *app.App, args []string) error {
@@ -81,6 +82,7 @@ func followUpList(ctx context.Context, iostreams IO, a *app.App, args []string) 
 	person := fs.String("person", "", "person id")
 	org := fs.String("org", "", "organization id")
 	filter := fs.String("filter", "all", "all|open|overdue|upcoming")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -98,27 +100,39 @@ func followUpList(ctx context.Context, iostreams IO, a *app.App, args []string) 
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, list)
+	return printResult(iostreams, *human, list)
 }
 
 func followUpComplete(ctx context.Context, iostreams IO, a *app.App, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("usage: symrelate followup complete <id>")
+	fs := flag.NewFlagSet("followup complete", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	fu, err := a.Relationships.CompleteFollowUp(ctx, args[0])
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate followup complete [--human] <id>")
+	}
+	fu, err := a.Relationships.CompleteFollowUp(ctx, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, fu)
+	return printResult(iostreams, *human, fu)
 }
 
 func followUpCancel(ctx context.Context, iostreams IO, a *app.App, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("usage: symrelate followup cancel <id>")
+	fs := flag.NewFlagSet("followup cancel", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	fu, err := a.Relationships.CancelFollowUp(ctx, args[0])
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate followup cancel [--human] <id>")
+	}
+	fu, err := a.Relationships.CancelFollowUp(ctx, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, fu)
+	return printResult(iostreams, *human, fu)
 }

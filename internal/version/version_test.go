@@ -16,7 +16,7 @@ func TestInfo_JSONUsesSnakeCase(t *testing.T) {
 		t.Fatalf("Unmarshal() error = %v", err)
 	}
 
-	for _, key := range []string{"tool", "version", "schema_version"} {
+	for _, key := range []string{"tool", "version", "schema_version", "api_version"} {
 		if _, ok := raw[key]; !ok {
 			t.Errorf("missing expected snake_case field %q in %s", key, b)
 		}

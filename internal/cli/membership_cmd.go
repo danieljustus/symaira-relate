@@ -48,6 +48,7 @@ func membershipAdd(ctx context.Context, iostreams IO, a *app.App, args []string)
 	org := fs.String("org", "", "organization id (required)")
 	role := fs.String("role", "", "role, e.g. member/vendor")
 	title := fs.String("title", "", "job title")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -59,27 +60,39 @@ func membershipAdd(ctx context.Context, iostreams IO, a *app.App, args []string)
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, m)
+	return printResult(iostreams, *human, m)
 }
 
 func membershipListPerson(ctx context.Context, iostreams IO, a *app.App, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("usage: symrelate membership list-person <person-id>")
+	fs := flag.NewFlagSet("membership list-person", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	list, err := a.Contacts.ListMembershipsByPerson(ctx, args[0])
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate membership list-person [--human] <person-id>")
+	}
+	list, err := a.Contacts.ListMembershipsByPerson(ctx, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, list)
+	return printResult(iostreams, *human, list)
 }
 
 func membershipListOrg(ctx context.Context, iostreams IO, a *app.App, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("usage: symrelate membership list-org <org-id>")
+	fs := flag.NewFlagSet("membership list-org", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	list, err := a.Contacts.ListMembershipsByOrganization(ctx, args[0])
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate membership list-org [--human] <org-id>")
+	}
+	list, err := a.Contacts.ListMembershipsByOrganization(ctx, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, list)
+	return printResult(iostreams, *human, list)
 }

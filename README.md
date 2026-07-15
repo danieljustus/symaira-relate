@@ -25,8 +25,16 @@ for the standalone-first and data-ownership boundaries this implies.
 
 ```sh
 symrelate doctor          # verify paths and database health
-symrelate version --json  # {"tool":"symrelate","version":"...","schema_version":N}
+symrelate version --json  # {"tool":"symrelate","version":"...","schema_version":N,"api_version":"v1"}
 ```
+
+Every data command prints stable, versioned JSON by default; add
+`--human` for a short readable summary instead (e.g. `symrelate contact
+show --human <id>`). See [docs/CLI_CONTRACT.md](docs/CLI_CONTRACT.md) for
+the full compatibility contract.
+
+Agents can talk to `symrelate` directly via `symrelate mcp`, a narrow MCP
+server over stdio — see [docs/MCP.md](docs/MCP.md).
 
 ## Data location
 

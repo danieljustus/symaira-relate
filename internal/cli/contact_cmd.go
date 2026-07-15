@@ -63,6 +63,7 @@ func contactAdd(ctx context.Context, iostreams IO, a *app.App, args []string) er
 	notes := fs.String("notes", "", "free-text notes")
 	email := fs.String("email", "", "email contact point")
 	phone := fs.String("phone", "", "phone contact point")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -88,38 +89,47 @@ func contactAdd(ctx context.Context, iostreams IO, a *app.App, args []string) er
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, p)
+	return printResult(iostreams, *human, p)
 }
 
 func contactShow(ctx context.Context, iostreams IO, a *app.App, args []string) error {
-	if len(args) != 1 {
-		return fmt.Errorf("usage: symrelate contact show <id>")
+	fs := flag.NewFlagSet("contact show", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
-	p, err := a.Contacts.GetPerson(ctx, args[0])
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate contact show [--human] <id>")
+	}
+	p, err := a.Contacts.GetPerson(ctx, fs.Arg(0))
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, p)
+	return printResult(iostreams, *human, p)
 }
 
 func contactList(ctx context.Context, iostreams IO, a *app.App, args []string) error {
 	fs := flag.NewFlagSet("contact list", flag.ContinueOnError)
 	fs.SetOutput(iostreams.Stderr)
 	classification := fs.String("classification", "", "filter by classification")
+	query := fs.String("query", "", "filter by name (case-insensitive substring)")
 	limit := fs.Int("limit", page.DefaultLimit, "max results")
 	offset := fs.Int("offset", 0, "result offset")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
 	result, err := a.Contacts.ListPersons(ctx, app.ListPersonsOptions{
 		Classification: contact.Classification(*classification),
+		Query:          *query,
 		Page:           page.Request{Limit: *limit, Offset: *offset},
 	})
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, result)
+	return printResult(iostreams, *human, result)
 }
 
 func contactUpdate(ctx context.Context, iostreams IO, a *app.App, args []string) error {
@@ -127,11 +137,12 @@ func contactUpdate(ctx context.Context, iostreams IO, a *app.App, args []string)
 	fs.SetOutput(iostreams.Stderr)
 	name := fs.String("name", "", "new display name")
 	notes := fs.String("notes", "", "new notes")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: symrelate contact update [--name ...] [--notes ...] <id>")
+		return fmt.Errorf("usage: symrelate contact update [--name ...] [--notes ...] [--human] <id>")
 	}
 
 	upd := contact.PersonUpdate{}
@@ -148,7 +159,7 @@ func contactUpdate(ctx context.Context, iostreams IO, a *app.App, args []string)
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, p)
+	return printResult(iostreams, *human, p)
 }
 
 func contactDelete(ctx context.Context, iostreams IO, a *app.App, args []string) error {
@@ -205,11 +216,12 @@ func contactAddPoint(ctx context.Context, iostreams IO, a *app.App, args []strin
 	value := fs.String("value", "", "contact point value")
 	label := fs.String("label", "", "label, e.g. work/home")
 	preferred := fs.Bool("preferred", false, "mark as preferred")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: symrelate contact add-point --kind ... --value ... <id>")
+		return fmt.Errorf("usage: symrelate contact add-point --kind ... --value ... [--human] <id>")
 	}
 
 	cp, err := a.Contacts.AddPersonContactPoint(ctx, fs.Arg(0), contact.ContactPointInput{
@@ -218,5 +230,5 @@ func contactAddPoint(ctx context.Context, iostreams IO, a *app.App, args []strin
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, cp)
+	return printResult(iostreams, *human, cp)
 }
