@@ -1,0 +1,25 @@
+// Package version carries the build-time version metadata surfaced by
+// `symrelate version --json` and the doctor command.
+package version
+
+// SchemaVersion is the highest embedded migration version this build knows
+// about. It is independent of the tool release version.
+const SchemaVersion = 5
+
+// Version is overridden at build time via
+// -ldflags "-X github.com/danieljustus/symaira-relate/internal/version.Version=v0.1.0".
+var Version = "dev"
+
+// Tool is the stable machine-readable tool identifier.
+const Tool = "symrelate"
+
+// Info is the JSON-serializable payload for `version --json`.
+type Info struct {
+	Tool          string `json:"tool"`
+	Version       string `json:"version"`
+	SchemaVersion int    `json:"schema_version"`
+}
+
+func Get() Info {
+	return Info{Tool: Tool, Version: Version, SchemaVersion: SchemaVersion}
+}
