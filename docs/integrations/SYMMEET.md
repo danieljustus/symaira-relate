@@ -33,47 +33,47 @@ pattern [SYMMEMORY.md](SYMMEMORY.md) documents for SymMemory.
   race past it either.
 - **CLI surface**: `symrelate meeting status` and `symrelate meeting
   import --id <meeting-id> [--title ...] [--summary ...] [--occurred
-  RFC3339] (--person <id>[,...] | --org <id>[,...]) [--fixture <path>]`.
+  RFC3339] (--person <id>[,...] | --org <id>[,...]) [--fixture <dir>]`.
   Contact association is always an explicit `--person`/`--org` list —
   nothing here guesses who attended.
-
-## What is provisional, and why
-
-Unlike SymMemory (verified against a real local installation — see
-[SYMMEMORY.md](SYMMEMORY.md)), **no `symmeet` binary was available while
-building this integration**, and symaira-meet's own v1 ecosystem
-integration contract
-([symaira-meet#19](https://github.com/danieljustus/symaira-meet/issues/19))
-is itself still open, depending on four other open issues in that repo
-(#2 artifact contracts, #4 version handshake, #11 exports, #18 MCP). So
-two things here are best-effort assumptions rather than confirmed
-behavior:
-
-- The `symmeet capabilities --json` command name and its `tool`/
-  `version`/`schema_version` fields, taken directly from #19's own
-  evidence section. `Capabilities` intentionally leaves every other
-  documented field (engine capabilities, supported formats, artifact
-  contract versions) unparsed rather than guessing their shape.
-- **There is no real SymMeet artifact import.** The acceptance criterion
-  "Relate can import a published synthetic SymMeet fixture only after
-  user confirmation" needs that fixture format, which doesn't exist yet.
-  `meeting import --fixture <path>` reads a local JSON file with an
-  assumed `{meeting_id, title, summary, occurred_at}` shape as a stopgap
-  — explicitly documented as provisional in the CLI's own `-h` output —
-  so the command is usable and testable today, with every field
-  overridable by an explicit flag. Once #19 publishes the real fixture
-  format, `applyMeetingFixture` in `internal/cli/meeting_cmd.go` is the
-  only place that needs to change.
+- **Real published fixture import.** symaira-meet's own v1 ecosystem
+  integration contract
+  ([symaira-meet#19](https://github.com/danieljustus/symaira-meet/issues/19))
+  landed, publishing the actual meeting-artifact manifest schema and a
+  synthetic fixture
+  (`Tests/Fixtures/integration/meeting-complete/manifest.json`).
+  `meeting import --fixture <dir>` now reads that real
+  `manifest.json` (`schema_version`, `meeting_id`, `source`, `created_at`,
+  `consent.status`, `retention.policy`) instead of the earlier
+  provisional stand-in shape; an unsupported `schema_version` is
+  rejected rather than parsed best-effort. `internal/cli/testdata/
+  symmeet/meeting-complete/manifest.json` vendors a verbatim copy of the
+  published fixture for tests.
+- **Source/consent/retention status display.** `meeting import` prints
+  the manifest's `source`/`consent.status`/`retention.policy` to Stderr
+  as an informational line — satisfying the parent issue's "status
+  display" criterion — without ever persisting them; the stored
+  interaction still only carries the opaque meeting id (see
+  `MeetingImportInput`). Consent/retention enforcement stays SymMeet's
+  job, per the parent issue's "leaving ... consent records ... ownership
+  with SymMeet."
 
 ## What is still blocked upstream
 
-- Real fixture import (needs symaira-meet#19 and its four dependencies).
-- Any richer SymMeet capability data (recording/transcript status,
-  consent/retention display) — the parent issue's "source/consent/
-  retention status display" criterion needs a published capabilities
-  schema to read those fields from; today `Capabilities` only reads
-  enough to answer "is SymMeet here and compatible."
+- **Candidate/entity work is unaffected here** — SymMeet's contract only
+  covers meeting artifacts, not the Memory-side ID/provenance work
+  tracked in [symaira-memory#343](https://github.com/danieljustus/symaira-memory/issues/343)
+  and [#344](https://github.com/danieljustus/symaira-memory/issues/344)
+  (that's [SYMMEMORY.md](SYMMEMORY.md)'s concern).
+- The real `manifest.json` carries no `title`/`summary` field, unlike the
+  earlier provisional stand-in shape — `--title`/`--summary` are always
+  explicit-flag-only now when importing from a fixture.
+- No real `symmeet` binary was available to verify `Discover`'s runtime
+  handshake end-to-end (unlike SymMemory — see
+  [SYMMEMORY.md](SYMMEMORY.md)); the `capabilities --json` shape it reads
+  was cross-checked against symaira-meet's own
+  `CapabilitiesCommand.swift` source instead.
 
-The interaction/idempotency layer above is real, tested, and does not
-need to change once #19 lands — only the fixture-parsing and capability-
-reading code does.
+The interaction/idempotency layer, `Discover`, and the fixture-manifest
+parsing above are all real and tested end-to-end against the published
+contract.

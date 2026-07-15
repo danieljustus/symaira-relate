@@ -6,15 +6,12 @@
 // found on PATH, exactly like internal/integration/symmemory does for
 // SymMemory.
 //
-// PROVISIONAL: symaira-meet's own v1 ecosystem integration contract
-// (symaira-meet#19) is itself still open, and no `symmeet` binary was
-// available while building this package (unlike symmemory, which was
-// verified against a real installation — see
-// docs/integrations/SYMMEMORY.md). The `symmeet capabilities --json`
-// command name and the fields this package reads come directly from
-// symaira-meet#19's own evidence section ("Add `symmeet capabilities
-// --json` with: binary/version/schema, ..."), not from testing against
-// the real tool. See docs/integrations/SYMMEET.md for the full status.
+// The `symmeet capabilities --json` command name and the tool/version/
+// schema_version fields this package reads match symaira-meet's now-
+// published v1 ecosystem integration contract (symaira-meet#19,
+// CapabilitiesCommand.swift) — confirmed against the published contract
+// rather than only the issue's own evidence section. See
+// docs/integrations/SYMMEET.md for the full status.
 package symmeet
 
 import (

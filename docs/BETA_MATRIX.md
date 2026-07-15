@@ -70,6 +70,7 @@ re-running the whole matrix.
 | 26 | Full build/test with no other Symaira tool present | On a machine (or container) with no `symmemory`/`symmeet`/`symvault` binary anywhere on `PATH`, run `go build ./...` and `go test ./...` — both must succeed |
 | 27 | `memory status` / `meeting status` degrade gracefully | On that same machine, both report `"available": false` with a reason, and no other command fails because of it |
 | 28 | Backup falls back to env-var passphrase without SymVault | `SYMRELATE_BACKUP_PASSPHRASE=x symrelate backup create --out b.enc` succeeds with no `--passphrase` flag and no SymVault installed |
+| 29 | `meeting import --fixture` reads the real published SymMeet manifest | `symrelate meeting import --fixture internal/cli/testdata/symmeet/meeting-complete --person <id>` creates the interaction, and the source/consent/retention status line appears on Stderr |
 
 ## Sign-off
 
