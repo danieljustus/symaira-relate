@@ -4,7 +4,7 @@ package version
 
 // SchemaVersion is the highest embedded migration version this build knows
 // about. It is independent of the tool release version.
-const SchemaVersion = 6
+const SchemaVersion = 7
 
 // APIVersion is the declared version of the CLI `--json` output and MCP
 // tool contract (see docs/CLI_CONTRACT.md). It is independent of both
