@@ -97,10 +97,10 @@ open issues in their respective sibling repositories.
   the user to already know the entity id) and writing relations into
   SymMemory are not implemented — both need APIs that don't exist yet
   upstream. See [docs/integrations/SYMMEMORY.md](docs/integrations/SYMMEMORY.md).
-- SymMeet: importing an actual published SymMeet artifact is not
-  implemented — the fixture format it depends on isn't published yet.
-  `meeting import --fixture` uses an explicitly-provisional stand-in
-  shape. See [docs/integrations/SYMMEET.md](docs/integrations/SYMMEET.md).
+- SymMeet: `meeting import --fixture` reads the real published meeting
+  manifest format now that symaira-meet#19 landed; no real `symmeet`
+  binary was available to verify the runtime discovery handshake
+  end-to-end. See [docs/integrations/SYMMEET.md](docs/integrations/SYMMEET.md).
 - The web console and MCP server intentionally expose a narrower surface
   than the CLI (no backup/restore, export, or audit-log viewing) — see
   [docs/CONSOLE.md](docs/CONSOLE.md) and [docs/MCP.md](docs/MCP.md).

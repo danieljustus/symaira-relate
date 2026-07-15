@@ -30,9 +30,11 @@ are omitted until the first tagged release.
   contact-to-entity links, and a best-effort context lookup — see
   `docs/integrations/SYMMEMORY.md` for what's implemented versus blocked
   on upstream work.
-- An optional SymMeet integration: runtime discovery and idempotent
-  meeting-interaction import — see `docs/integrations/SYMMEET.md` for
-  what's implemented versus blocked on upstream work.
+- An optional SymMeet integration: runtime discovery, idempotent
+  meeting-interaction import from the real published SymMeet fixture
+  format, and source/consent/retention status display — see
+  `docs/integrations/SYMMEET.md` for what's implemented versus blocked on
+  upstream work.
 - CI: format/vet/build/test on every push and PR, plus a `govulncheck`
   job.
 - A tag-triggered release workflow building cross-platform binaries
@@ -42,7 +44,6 @@ are omitted until the first tagged release.
 
 See the "Known limitations" section of `README.md` and
 `docs/BETA_MATRIX.md` for the full list — in short: SymMemory candidate
-matching/relation writes and real SymMeet fixture import are blocked on
-still-open issues in their respective repositories, and beta CLI/API
-surfaces (schema, JSON contract, on-disk format) may still change between
-beta releases.
+matching/relation writes are blocked on still-open issues upstream, and
+beta CLI/API surfaces (schema, JSON contract, on-disk format) may still
+change between beta releases.
