@@ -163,7 +163,7 @@ func addContactPoint(ctx context.Context, x execer, ref entityRef, in contact.Co
 
 func listContactPoints(ctx context.Context, x execer, ref entityRef) ([]contact.ContactPoint, error) {
 	rows, err := x.QueryContext(ctx, fmt.Sprintf(`
-		SELECT id, kind, raw_value, normalized_value, label, is_preferred, is_verified, created_at, updated_at
+		SELECT id, kind, raw_value, normalized_value, COALESCE(label, ''), is_preferred, is_verified, created_at, updated_at
 		FROM contact_points WHERE %s = ? ORDER BY is_preferred DESC, created_at, id`, ref.column), ref.id)
 	if err != nil {
 		return nil, err

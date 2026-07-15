@@ -34,7 +34,7 @@ func (s *Service) GetOrganization(ctx context.Context, id string) (*contact.Orga
 	var o contact.Organization
 	var createdAt, updatedAt string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, name, notes, source, source_ref, created_at, updated_at
+		SELECT id, name, COALESCE(notes, ''), COALESCE(source, ''), COALESCE(source_ref, ''), created_at, updated_at
 		FROM organizations WHERE id = ?`, id,
 	).Scan(&o.ID, &o.Name, &o.Notes, &o.Source, &o.SourceRef, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
@@ -72,7 +72,7 @@ func (s *Service) ListOrganizations(ctx context.Context, opts ListOrganizationsO
 	req := page.NewRequest(opts.Page.Limit, opts.Page.Offset)
 
 	query := `
-		SELECT DISTINCT o.id, o.name, o.notes, o.source, o.source_ref, o.created_at, o.updated_at
+		SELECT DISTINCT o.id, o.name, COALESCE(o.notes, ''), COALESCE(o.source, ''), COALESCE(o.source_ref, ''), o.created_at, o.updated_at
 		FROM organizations o`
 	args := []any{}
 	if opts.Classification != "" {

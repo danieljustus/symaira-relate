@@ -38,6 +38,21 @@ Paths follow the XDG Base Directory convention:
 | Data (the SQLite database) | `$XDG_DATA_HOME/symrelate` (`~/.local/share/symrelate`) | `SYMRELATE_DATA_HOME` |
 | Cache | `$XDG_CACHE_HOME/symrelate` (`~/.cache/symrelate`) | `SYMRELATE_CACHE_HOME` |
 
+## Importing existing contacts
+
+```sh
+symrelate import vcard --dry-run testdata/import/sample.vcf   # preview, writes nothing
+symrelate import vcard testdata/import/sample.vcf             # apply
+symrelate import csv --map name=Full Name,email=Email sample.csv --dry-run
+symrelate import runs                                         # history of past imports
+```
+
+vCard (3.0/4.0) and CSV import share one workflow: a dry run never writes,
+duplicate candidates (matched on normalized contact points, names, or a
+prior import of the same source) require an explicit `--resolve
+ROW=create|skip|merge:PERSONID`, and re-importing an unchanged source is
+idempotent — nothing is duplicated on a second run.
+
 ## Data protection
 
 Sensitive contact-point values never appear in logs, errors or `doctor`

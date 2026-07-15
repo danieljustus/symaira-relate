@@ -39,7 +39,7 @@ func (s *Service) GetPerson(ctx context.Context, id string) (*contact.Person, er
 	var p contact.Person
 	var createdAt, updatedAt string
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, display_name, given_name, family_name, notes, source, source_ref, created_at, updated_at
+		SELECT id, display_name, COALESCE(given_name, ''), COALESCE(family_name, ''), COALESCE(notes, ''), COALESCE(source, ''), COALESCE(source_ref, ''), created_at, updated_at
 		FROM persons WHERE id = ?`, id,
 	).Scan(&p.ID, &p.DisplayName, &p.GivenName, &p.FamilyName, &p.Notes, &p.Source, &p.SourceRef, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
@@ -81,7 +81,7 @@ func (s *Service) ListPersons(ctx context.Context, opts ListPersonsOptions) (pag
 	req := page.NewRequest(opts.Page.Limit, opts.Page.Offset)
 
 	query := `
-		SELECT DISTINCT p.id, p.display_name, p.given_name, p.family_name, p.notes, p.source, p.source_ref, p.created_at, p.updated_at
+		SELECT DISTINCT p.id, p.display_name, COALESCE(p.given_name, ''), COALESCE(p.family_name, ''), COALESCE(p.notes, ''), COALESCE(p.source, ''), COALESCE(p.source_ref, ''), p.created_at, p.updated_at
 		FROM persons p`
 	args := []any{}
 	if opts.Classification != "" {

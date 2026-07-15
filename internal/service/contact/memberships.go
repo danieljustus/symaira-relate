@@ -46,7 +46,7 @@ func (s *Service) AddMembership(ctx context.Context, personID, organizationID st
 func (s *Service) getMembership(ctx context.Context, id string) (*contact.Membership, error) {
 	const op = "contact.getMembership"
 	m, err := scanMembership(s.db.QueryRowContext(ctx, `
-		SELECT id, person_id, organization_id, role, title, valid_from, valid_to, created_at, updated_at
+		SELECT id, person_id, organization_id, COALESCE(role, ''), COALESCE(title, ''), valid_from, valid_to, created_at, updated_at
 		FROM organization_memberships WHERE id = ?`, id))
 	if err == sql.ErrNoRows {
 		return nil, errs.NotFound(op, "membership not found", nil)
@@ -72,7 +72,7 @@ func (s *Service) ListMembershipsByOrganization(ctx context.Context, organizatio
 func (s *Service) listMemberships(ctx context.Context, column, id string) ([]contact.Membership, error) {
 	const op = "contact.listMemberships"
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, person_id, organization_id, role, title, valid_from, valid_to, created_at, updated_at
+		SELECT id, person_id, organization_id, COALESCE(role, ''), COALESCE(title, ''), valid_from, valid_to, created_at, updated_at
 		FROM organization_memberships WHERE `+column+` = ?
 		ORDER BY COALESCE(valid_from, created_at) DESC, id`, id)
 	if err != nil {
