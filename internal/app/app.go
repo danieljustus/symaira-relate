@@ -1,7 +1,8 @@
 // Package app wires the storage layer to the domain services and is the
-// single boundary the CLI (and, later, an MCP server) is allowed to depend
-// on. Neither entry point may reach into internal/storage or
-// internal/domain directly.
+// behavior boundary the CLI (and, later, an MCP server) is allowed to
+// depend on: no entry point may import internal/storage or a
+// internal/service/* package directly. Pure data types in internal/domain
+// are shared vocabulary and may be imported directly by entry points.
 package app
 
 import (
@@ -9,6 +10,7 @@ import (
 	"database/sql"
 
 	"github.com/danieljustus/symaira-relate/internal/errs"
+	contactsvc "github.com/danieljustus/symaira-relate/internal/service/contact"
 	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
 	"github.com/danieljustus/symaira-relate/internal/xdg"
 )
@@ -19,7 +21,16 @@ import (
 type App struct {
 	Paths xdg.Paths
 	DB    *sql.DB
+
+	Contacts *contactsvc.Service
 }
+
+// Aliases for the contact service's option types, so CLI commands can name
+// them without importing internal/service/contact directly.
+type (
+	ListPersonsOptions       = contactsvc.ListPersonsOptions
+	ListOrganizationsOptions = contactsvc.ListOrganizationsOptions
+)
 
 // Open resolves XDG paths, ensures they exist, and opens the migrated
 // database. Callers must Close the returned App.

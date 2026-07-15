@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 
+	contactsvc "github.com/danieljustus/symaira-relate/internal/service/contact"
 	"github.com/danieljustus/symaira-relate/internal/xdg"
 )
 
@@ -11,7 +12,8 @@ import (
 // that assembles the dependency graph.
 func wire(paths xdg.Paths, db *sql.DB) *App {
 	return &App{
-		Paths: paths,
-		DB:    db,
+		Paths:    paths,
+		DB:       db,
+		Contacts: contactsvc.New(db),
 	}
 }
