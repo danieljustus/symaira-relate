@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -106,5 +107,26 @@ func TestParseMigrationFilename(t *testing.T) {
 
 	if _, _, err := parseMigrationFilename("malformed.sql"); err == nil {
 		t.Error("expected error for malformed filename, got nil")
+	}
+}
+
+func TestSplitStatements_IgnoresSemicolonInsideLineComment(t *testing.T) {
+	script := "-- a comment; that looks like a statement break\nCREATE TABLE t (id TEXT);\nCREATE TABLE u (id TEXT); -- trailing; comment"
+	stmts := splitStatements(script)
+
+	var nonEmpty []string
+	for _, s := range stmts {
+		if strings.TrimSpace(s) != "" {
+			nonEmpty = append(nonEmpty, strings.TrimSpace(s))
+		}
+	}
+	if len(nonEmpty) != 2 {
+		t.Fatalf("got %d non-empty statements %q, want 2", len(nonEmpty), nonEmpty)
+	}
+	if nonEmpty[0] != "CREATE TABLE t (id TEXT)" {
+		t.Errorf("statement 1 = %q, want \"CREATE TABLE t (id TEXT)\"", nonEmpty[0])
+	}
+	if nonEmpty[1] != "CREATE TABLE u (id TEXT)" {
+		t.Errorf("statement 2 = %q, want \"CREATE TABLE u (id TEXT)\"", nonEmpty[1])
 	}
 }

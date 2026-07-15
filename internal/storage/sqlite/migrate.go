@@ -95,11 +95,21 @@ func applyMigration(ctx context.Context, db *sql.DB, m migration) error {
 	return tx.Commit()
 }
 
-// splitStatements is a minimal ";"-based splitter. Migration files must not
-// rely on ";" inside string literals or triggers; this keeps the runner
-// dependency-free and auditable.
+// splitStatements strips "--" line comments (so a semicolon inside a
+// comment can't be mistaken for a statement terminator) and splits the
+// remainder on ";". Migration files must not rely on ";" inside string
+// literals or triggers; this keeps the runner dependency-free and
+// auditable.
 func splitStatements(script string) []string {
-	return strings.Split(script, ";")
+	var stripped strings.Builder
+	for _, line := range strings.Split(script, "\n") {
+		if idx := strings.Index(line, "--"); idx >= 0 {
+			line = line[:idx]
+		}
+		stripped.WriteString(line)
+		stripped.WriteByte('\n')
+	}
+	return strings.Split(stripped.String(), ";")
 }
 
 func loadMigrations() ([]migration, error) {

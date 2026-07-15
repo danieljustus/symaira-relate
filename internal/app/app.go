@@ -11,6 +11,7 @@ import (
 
 	"github.com/danieljustus/symaira-relate/internal/errs"
 	contactsvc "github.com/danieljustus/symaira-relate/internal/service/contact"
+	relationshipsvc "github.com/danieljustus/symaira-relate/internal/service/relationship"
 	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
 	"github.com/danieljustus/symaira-relate/internal/xdg"
 )
@@ -22,14 +23,23 @@ type App struct {
 	Paths xdg.Paths
 	DB    *sql.DB
 
-	Contacts *contactsvc.Service
+	Contacts      *contactsvc.Service
+	Relationships *relationshipsvc.Service
 }
 
-// Aliases for the contact service's option types, so CLI commands can name
-// them without importing internal/service/contact directly.
+// Aliases for the domain services' option types, so CLI commands can name
+// them without importing internal/service/* directly.
 type (
 	ListPersonsOptions       = contactsvc.ListPersonsOptions
 	ListOrganizationsOptions = contactsvc.ListOrganizationsOptions
+	FollowUpFilter           = relationshipsvc.FollowUpFilter
+)
+
+const (
+	FollowUpFilterAll      = relationshipsvc.FollowUpFilterAll
+	FollowUpFilterOpen     = relationshipsvc.FollowUpFilterOpen
+	FollowUpFilterOverdue  = relationshipsvc.FollowUpFilterOverdue
+	FollowUpFilterUpcoming = relationshipsvc.FollowUpFilterUpcoming
 )
 
 // Open resolves XDG paths, ensures they exist, and opens the migrated
