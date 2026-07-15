@@ -29,3 +29,14 @@ func TestRedact_LeavesPlainTextUntouched(t *testing.T) {
 		t.Errorf("Redact(%q) = %q, want unchanged", in, out)
 	}
 }
+
+// TestRedact_LeavesIPv4AddressesUntouched guards against a false positive
+// found while testing the console's bind-error diagnostics: a loopback
+// address like 127.0.0.1 matches the phone digit/separator pattern but is
+// not contact data — see internal/console.Listen.
+func TestRedact_LeavesIPv4AddressesUntouched(t *testing.T) {
+	in := "listen tcp 127.0.0.1:8791: bind: address already in use"
+	if out := Redact(in); out != in {
+		t.Errorf("Redact(%q) = %q, want unchanged (IPv4 address is not phone data)", in, out)
+	}
+}

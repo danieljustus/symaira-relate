@@ -36,6 +36,10 @@ the full compatibility contract.
 Agents can talk to `symrelate` directly via `symrelate mcp`, a narrow MCP
 server over stdio — see [docs/MCP.md](docs/MCP.md).
 
+For everyday contact management without the CLI, run `symrelate console`
+for a localhost-only, authenticated web UI — see
+[docs/CONSOLE.md](docs/CONSOLE.md).
+
 ## Data location
 
 Paths follow the XDG Base Directory convention:

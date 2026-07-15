@@ -195,23 +195,9 @@ func contactCreateTool() tool {
 			if err := decodeArgs(raw, &args); err != nil {
 				return nil, err
 			}
-			p, err := a.Contacts.CreatePerson(ctx, contact.PersonInput{
+			return a.CreatePersonWithContactPoints(ctx, contact.PersonInput{
 				DisplayName: args.DisplayName, GivenName: args.GivenName, FamilyName: args.FamilyName, Notes: args.Notes,
-			})
-			if err != nil {
-				return nil, err
-			}
-			if args.Email != "" {
-				if _, err := a.Contacts.AddPersonContactPoint(ctx, p.ID, contact.ContactPointInput{Kind: contact.ContactPointEmail, RawValue: args.Email}); err != nil {
-					return nil, err
-				}
-			}
-			if args.Phone != "" {
-				if _, err := a.Contacts.AddPersonContactPoint(ctx, p.ID, contact.ContactPointInput{Kind: contact.ContactPointPhone, RawValue: args.Phone}); err != nil {
-					return nil, err
-				}
-			}
-			return a.Contacts.GetPerson(ctx, p.ID)
+			}, args.Email, args.Phone)
 		},
 	}
 }

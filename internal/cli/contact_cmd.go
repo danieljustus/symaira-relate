@@ -68,24 +68,9 @@ func contactAdd(ctx context.Context, iostreams IO, a *app.App, args []string) er
 		return err
 	}
 
-	p, err := a.Contacts.CreatePerson(ctx, contact.PersonInput{
+	p, err := a.CreatePersonWithContactPoints(ctx, contact.PersonInput{
 		DisplayName: *name, GivenName: *given, FamilyName: *family, Notes: *notes,
-	})
-	if err != nil {
-		return err
-	}
-	if *email != "" {
-		if _, err := a.Contacts.AddPersonContactPoint(ctx, p.ID, contact.ContactPointInput{Kind: contact.ContactPointEmail, RawValue: *email}); err != nil {
-			return err
-		}
-	}
-	if *phone != "" {
-		if _, err := a.Contacts.AddPersonContactPoint(ctx, p.ID, contact.ContactPointInput{Kind: contact.ContactPointPhone, RawValue: *phone}); err != nil {
-			return err
-		}
-	}
-
-	p, err = a.Contacts.GetPerson(ctx, p.ID)
+	}, *email, *phone)
 	if err != nil {
 		return err
 	}
