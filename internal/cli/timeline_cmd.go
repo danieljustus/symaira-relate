@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/danieljustus/symaira-relate/internal/app"
+	"github.com/danieljustus/symaira-relate/internal/domain/relationship"
 )
 
 func init() {
@@ -21,11 +22,12 @@ func runTimeline(ctx context.Context, iostreams IO, args []string) error {
 	fs.SetOutput(iostreams.Stderr)
 	person := fs.String("person", "", "person id")
 	org := fs.String("org", "", "organization id")
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if (*person == "") == (*org == "") {
-		return fmt.Errorf("usage: symrelate timeline (--person <id> | --org <id>)")
+		return fmt.Errorf("usage: symrelate timeline (--person <id> | --org <id>) [--human]")
 	}
 
 	a, err := app.Open(ctx)
@@ -34,7 +36,7 @@ func runTimeline(ctx context.Context, iostreams IO, args []string) error {
 	}
 	defer a.Close()
 
-	var timeline any
+	var timeline []relationship.TimelineEntry
 	if *person != "" {
 		timeline, err = a.Relationships.PersonTimeline(ctx, *person)
 	} else {
@@ -43,5 +45,5 @@ func runTimeline(ctx context.Context, iostreams IO, args []string) error {
 	if err != nil {
 		return err
 	}
-	return printJSON(iostreams, timeline)
+	return printResult(iostreams, *human, timeline)
 }

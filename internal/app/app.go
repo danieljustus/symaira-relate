@@ -10,9 +10,11 @@ import (
 	"database/sql"
 	"io"
 
+	"github.com/danieljustus/symaira-relate/internal/domain/contact"
 	"github.com/danieljustus/symaira-relate/internal/errs"
 	contactsvc "github.com/danieljustus/symaira-relate/internal/service/contact"
 	importersvc "github.com/danieljustus/symaira-relate/internal/service/importer"
+	memorylinksvc "github.com/danieljustus/symaira-relate/internal/service/memorylink"
 	relationshipsvc "github.com/danieljustus/symaira-relate/internal/service/relationship"
 	securitysvc "github.com/danieljustus/symaira-relate/internal/service/security"
 	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
@@ -30,6 +32,7 @@ type App struct {
 	Relationships *relationshipsvc.Service
 	Security      *securitysvc.Service
 	Import        *importersvc.Service
+	MemoryLinks   *memorylinksvc.Service
 }
 
 // Aliases for the domain services' option types, so CLI commands can name
@@ -100,4 +103,28 @@ func (a *App) Close() error {
 // (or touch) an already-open App — see securitysvc.Restore.
 func RestoreBackup(ctx context.Context, passphrase []byte, r io.Reader, targetDBPath string) error {
 	return securitysvc.Restore(ctx, passphrase, r, targetDBPath)
+}
+
+// CreatePersonWithContactPoints creates a person and, when non-empty, an
+// email and/or phone contact point in the same call — the "quick add"
+// shape every front end (CLI `contact add`, the MCP contact_create tool,
+// the web console) offers so a caller does not have to duplicate the
+// create-then-add-point sequence. It is the single implementation of that
+// use case; front ends call through it instead of re-deriving it.
+func (a *App) CreatePersonWithContactPoints(ctx context.Context, in contact.PersonInput, email, phone string) (*contact.Person, error) {
+	p, err := a.Contacts.CreatePerson(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	if email != "" {
+		if _, err := a.Contacts.AddPersonContactPoint(ctx, p.ID, contact.ContactPointInput{Kind: contact.ContactPointEmail, RawValue: email}); err != nil {
+			return nil, err
+		}
+	}
+	if phone != "" {
+		if _, err := a.Contacts.AddPersonContactPoint(ctx, p.ID, contact.ContactPointInput{Kind: contact.ContactPointPhone, RawValue: phone}); err != nil {
+			return nil, err
+		}
+	}
+	return a.Contacts.GetPerson(ctx, p.ID)
 }

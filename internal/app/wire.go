@@ -5,6 +5,7 @@ import (
 
 	contactsvc "github.com/danieljustus/symaira-relate/internal/service/contact"
 	importersvc "github.com/danieljustus/symaira-relate/internal/service/importer"
+	memorylinksvc "github.com/danieljustus/symaira-relate/internal/service/memorylink"
 	relationshipsvc "github.com/danieljustus/symaira-relate/internal/service/relationship"
 	securitysvc "github.com/danieljustus/symaira-relate/internal/service/security"
 	"github.com/danieljustus/symaira-relate/internal/xdg"
@@ -22,5 +23,6 @@ func wire(paths xdg.Paths, db *sql.DB) *App {
 		Relationships: relationshipsvc.New(db),
 		Security:      securitysvc.New(db),
 		Import:        importersvc.New(db, contacts),
+		MemoryLinks:   memorylinksvc.New(db),
 	}
 }

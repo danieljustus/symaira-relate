@@ -64,6 +64,7 @@ func (s *Service) GetOrganization(ctx context.Context, id string) (*contact.Orga
 
 type ListOrganizationsOptions struct {
 	Classification contact.Classification
+	Query          string // zero value: no filter; matched against name, case-insensitive substring
 	Page           page.Request
 }
 
@@ -78,6 +79,10 @@ func (s *Service) ListOrganizations(ctx context.Context, opts ListOrganizationsO
 	if opts.Classification != "" {
 		query += ` JOIN entity_classifications ec ON ec.organization_id = o.id AND ec.classification = ?`
 		args = append(args, string(opts.Classification))
+	}
+	if q := strings.TrimSpace(opts.Query); q != "" {
+		query += ` WHERE o.name LIKE ? ESCAPE '\' COLLATE NOCASE`
+		args = append(args, likePattern(q))
 	}
 	query += ` ORDER BY o.name COLLATE NOCASE, o.id LIMIT ? OFFSET ?`
 	args = append(args, req.Limit+1, req.Offset)

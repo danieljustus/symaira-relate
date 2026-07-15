@@ -25,8 +25,20 @@ for the standalone-first and data-ownership boundaries this implies.
 
 ```sh
 symrelate doctor          # verify paths and database health
-symrelate version --json  # {"tool":"symrelate","version":"...","schema_version":N}
+symrelate version --json  # {"tool":"symrelate","version":"...","schema_version":N,"api_version":"v1"}
 ```
+
+Every data command prints stable, versioned JSON by default; add
+`--human` for a short readable summary instead (e.g. `symrelate contact
+show --human <id>`). See [docs/CLI_CONTRACT.md](docs/CLI_CONTRACT.md) for
+the full compatibility contract.
+
+Agents can talk to `symrelate` directly via `symrelate mcp`, a narrow MCP
+server over stdio — see [docs/MCP.md](docs/MCP.md).
+
+For everyday contact management without the CLI, run `symrelate console`
+for a localhost-only, authenticated web UI — see
+[docs/CONSOLE.md](docs/CONSOLE.md).
 
 ## Data location
 
@@ -60,10 +72,49 @@ output; backups are AES-256-GCM encrypted; erasing a contact is a hard
 delete with an audit trail. See [docs/PRIVACY.md](docs/PRIVACY.md) for the
 full policy.
 
+## Optional integrations
+
+`symrelate` never requires another Symaira tool to build, run, or pass
+its tests (see [ARCHITECTURE.md](ARCHITECTURE.md)'s standalone-first
+rule). Two integrations are detected at runtime and degrade gracefully
+when absent:
+
+- `symrelate memory status|link|unlink|show` — an optional link from a
+  contact to a SymMemory entity for reviewed context lookup. See
+  [docs/integrations/SYMMEMORY.md](docs/integrations/SYMMEMORY.md).
+- `symrelate meeting status|import` — import a SymMeet meeting as a
+  reviewed, idempotent contact interaction. See
+  [docs/integrations/SYMMEET.md](docs/integrations/SYMMEET.md).
+
+Both documents state plainly what's implemented versus still blocked on
+open issues in their respective sibling repositories.
+
+## Known limitations (beta)
+
+- The CLI JSON contract (`api_version`), on-disk schema, and MCP tool
+  catalogue are pre-1.0 and may still change between beta releases.
+- SymMemory: candidate matching (suggesting a link instead of requiring
+  the user to already know the entity id) and writing relations into
+  SymMemory are not implemented — both need APIs that don't exist yet
+  upstream. See [docs/integrations/SYMMEMORY.md](docs/integrations/SYMMEMORY.md).
+- SymMeet: importing an actual published SymMeet artifact is not
+  implemented — the fixture format it depends on isn't published yet.
+  `meeting import --fixture` uses an explicitly-provisional stand-in
+  shape. See [docs/integrations/SYMMEET.md](docs/integrations/SYMMEET.md).
+- The web console and MCP server intentionally expose a narrower surface
+  than the CLI (no backup/restore, export, or audit-log viewing) — see
+  [docs/CONSOLE.md](docs/CONSOLE.md) and [docs/MCP.md](docs/MCP.md).
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues
+and [docs/BETA_MATRIX.md](docs/BETA_MATRIX.md) for the manual QA checklist
+run before each beta release. [CHANGELOG.md](CHANGELOG.md) tracks what's
+landed.
+
 ## Development
 
 ```sh
 CGO_ENABLED=0 go build ./...
 CGO_ENABLED=0 go vet ./...
 CGO_ENABLED=0 go test ./...
+CGO_ENABLED=0 go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 ```

@@ -103,3 +103,32 @@ func TestContactLifecycle_EndToEnd(t *testing.T) {
 		t.Fatal("contact show after delete: expected non-zero exit")
 	}
 }
+
+// TestHumanFlag_IsReadableNotJSON exercises the --human rendering path
+// added for the CLI JSON/human contract (see docs/CLI_CONTRACT.md):
+// --json (the default) must stay parseable, --human must stay a non-JSON
+// summary, for the same underlying data.
+func TestHumanFlag_IsReadableNotJSON(t *testing.T) {
+	setTestProfileDirs(t)
+
+	out, stderr, code := runCLI(t, "contact", "add", "--name", "Grace Hopper", "--email", "grace@example.com")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+	var person map[string]any
+	if err := json.Unmarshal([]byte(out), &person); err != nil {
+		t.Fatalf("default output is not JSON: %v (%s)", err, out)
+	}
+	personID, _ := person["ID"].(string)
+
+	out, stderr, code = runCLI(t, "contact", "show", "--human", personID)
+	if code != 0 {
+		t.Fatalf("contact show --human: code=%d stderr=%s", code, stderr)
+	}
+	if err := json.Unmarshal([]byte(out), &map[string]any{}); err == nil {
+		t.Errorf("--human output looks like JSON, want a human-readable summary: %s", out)
+	}
+	if !strings.Contains(out, "Grace Hopper") || !strings.Contains(out, "grace@example.com") {
+		t.Errorf("--human output missing expected fields: %s", out)
+	}
+}
