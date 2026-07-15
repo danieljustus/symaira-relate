@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"sort"
+
+	"github.com/danieljustus/symaira-relate/internal/domain/security"
 )
 
 // IO bundles the streams a command reads and writes. Diagnostics belong on
@@ -60,7 +62,10 @@ func Run(ctx context.Context, iostreams IO, args []string) int {
 	}
 
 	if err := cmd.Run(ctx, iostreams, args[1:]); err != nil {
-		fmt.Fprintf(iostreams.Stderr, "symrelate: %v\n", err)
+		// Last line of defense: mask any contact-like value that reached
+		// an error message even if a call site forgot to keep it out —
+		// see docs/PRIVACY.md.
+		fmt.Fprintf(iostreams.Stderr, "symrelate: %s\n", security.Redact(err.Error()))
 		return 1
 	}
 	return 0

@@ -20,7 +20,7 @@ func init() {
 
 func runOrg(ctx context.Context, iostreams IO, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: symrelate org <add|show|list|update|delete|tag|classify|add-point> ...")
+		return fmt.Errorf("usage: symrelate org <add|show|list|update|delete|erase|tag|classify|add-point> ...")
 	}
 	verb, rest := args[0], args[1:]
 
@@ -41,6 +41,8 @@ func runOrg(ctx context.Context, iostreams IO, args []string) error {
 		return orgUpdate(ctx, iostreams, a, rest)
 	case "delete":
 		return orgDelete(ctx, iostreams, a, rest)
+	case "erase":
+		return orgErase(ctx, iostreams, a, rest)
 	case "tag":
 		return orgTag(ctx, iostreams, a, rest)
 	case "classify":
@@ -137,6 +139,18 @@ func orgDelete(ctx context.Context, iostreams IO, a *app.App, args []string) err
 	}
 	fmt.Fprintln(iostreams.Stdout, "deleted")
 	return nil
+}
+
+// orgErase is the audited privacy-erasure workflow — see contactErase.
+func orgErase(ctx context.Context, iostreams IO, a *app.App, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("usage: symrelate org erase <id>")
+	}
+	summary, err := a.Security.EraseOrganization(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	return printJSON(iostreams, summary)
 }
 
 func orgTag(ctx context.Context, iostreams IO, a *app.App, args []string) error {

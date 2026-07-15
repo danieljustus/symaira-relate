@@ -20,7 +20,7 @@ func init() {
 
 func runContact(ctx context.Context, iostreams IO, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: symrelate contact <add|show|list|update|delete|tag|classify|contact-point> ...")
+		return fmt.Errorf("usage: symrelate contact <add|show|list|update|delete|erase|tag|classify|add-point> ...")
 	}
 	verb, rest := args[0], args[1:]
 
@@ -41,6 +41,8 @@ func runContact(ctx context.Context, iostreams IO, args []string) error {
 		return contactUpdate(ctx, iostreams, a, rest)
 	case "delete":
 		return contactDelete(ctx, iostreams, a, rest)
+	case "erase":
+		return contactErase(ctx, iostreams, a, rest)
 	case "tag":
 		return contactTag(ctx, iostreams, a, rest)
 	case "classify":
@@ -158,6 +160,20 @@ func contactDelete(ctx context.Context, iostreams IO, a *app.App, args []string)
 	}
 	fmt.Fprintln(iostreams.Stdout, "deleted")
 	return nil
+}
+
+// contactErase is the audited privacy-erasure workflow (see
+// docs/PRIVACY.md): unlike delete, it records an audit event with counts
+// of what was removed and returns that summary to the caller.
+func contactErase(ctx context.Context, iostreams IO, a *app.App, args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("usage: symrelate contact erase <id>")
+	}
+	summary, err := a.Security.EraseContact(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	return printJSON(iostreams, summary)
 }
 
 func contactTag(ctx context.Context, iostreams IO, a *app.App, args []string) error {

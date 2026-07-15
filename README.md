@@ -38,10 +38,17 @@ Paths follow the XDG Base Directory convention:
 | Data (the SQLite database) | `$XDG_DATA_HOME/symrelate` (`~/.local/share/symrelate`) | `SYMRELATE_DATA_HOME` |
 | Cache | `$XDG_CACHE_HOME/symrelate` (`~/.cache/symrelate`) | `SYMRELATE_CACHE_HOME` |
 
+## Data protection
+
+Sensitive contact-point values never appear in logs, errors or `doctor`
+output; backups are AES-256-GCM encrypted; erasing a contact is a hard
+delete with an audit trail. See [docs/PRIVACY.md](docs/PRIVACY.md) for the
+full policy.
+
 ## Development
 
 ```sh
-go build ./...
-go vet ./...
-go test ./... -race
+CGO_ENABLED=0 go build ./...
+CGO_ENABLED=0 go vet ./...
+CGO_ENABLED=0 go test ./...
 ```

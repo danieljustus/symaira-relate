@@ -8,10 +8,12 @@ package app
 import (
 	"context"
 	"database/sql"
+	"io"
 
 	"github.com/danieljustus/symaira-relate/internal/errs"
 	contactsvc "github.com/danieljustus/symaira-relate/internal/service/contact"
 	relationshipsvc "github.com/danieljustus/symaira-relate/internal/service/relationship"
+	securitysvc "github.com/danieljustus/symaira-relate/internal/service/security"
 	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
 	"github.com/danieljustus/symaira-relate/internal/xdg"
 )
@@ -25,6 +27,7 @@ type App struct {
 
 	Contacts      *contactsvc.Service
 	Relationships *relationshipsvc.Service
+	Security      *securitysvc.Service
 }
 
 // Aliases for the domain services' option types, so CLI commands can name
@@ -89,4 +92,10 @@ func (a *App) Close() error {
 		return nil
 	}
 	return a.DB.Close()
+}
+
+// RestoreBackup decrypts a backup into targetDBPath. It does not require
+// (or touch) an already-open App — see securitysvc.Restore.
+func RestoreBackup(ctx context.Context, passphrase []byte, r io.Reader, targetDBPath string) error {
+	return securitysvc.Restore(ctx, passphrase, r, targetDBPath)
 }
