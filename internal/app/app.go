@@ -14,6 +14,7 @@ import (
 	"github.com/danieljustus/symaira-relate/internal/errs"
 	contactsvc "github.com/danieljustus/symaira-relate/internal/service/contact"
 	importersvc "github.com/danieljustus/symaira-relate/internal/service/importer"
+	memorylinksvc "github.com/danieljustus/symaira-relate/internal/service/memorylink"
 	relationshipsvc "github.com/danieljustus/symaira-relate/internal/service/relationship"
 	securitysvc "github.com/danieljustus/symaira-relate/internal/service/security"
 	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
@@ -31,6 +32,7 @@ type App struct {
 	Relationships *relationshipsvc.Service
 	Security      *securitysvc.Service
 	Import        *importersvc.Service
+	MemoryLinks   *memorylinksvc.Service
 }
 
 // Aliases for the domain services' option types, so CLI commands can name
