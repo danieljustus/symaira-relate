@@ -55,7 +55,12 @@ function showError(err) {
 
 // -- routing -----------------------------------------------------------
 
-const routes = { contacts: renderContacts, organizations: renderOrganizations, followups: renderFollowUps, import: renderImport };
+const routes = new Map([
+  ["contacts", renderContacts],
+  ["organizations", renderOrganizations],
+  ["followups", renderFollowUps],
+  ["import", renderImport],
+]);
 
 function setActiveTab(name) {
   document.querySelectorAll(".tab").forEach((btn) => {
@@ -71,14 +76,16 @@ function navigate(name, param) {
 function currentRoute() {
   const raw = location.hash.replace(/^#/, "") || "contacts";
   const [name, param] = raw.split("/");
-  return { name: routes[name] ? name : "contacts", param };
+  // Map.has is an own-entry check: inherited names like "constructor" or
+  // "toString" can never reach the dispatch below.
+  return { name: routes.has(name) ? name : "contacts", param };
 }
 
 function renderRoute() {
   const { name, param } = currentRoute();
   setActiveTab(name);
   view.focus();
-  routes[name](param).catch(showError);
+  routes.get(name)(param).catch(showError);
 }
 
 window.addEventListener("hashchange", renderRoute);
