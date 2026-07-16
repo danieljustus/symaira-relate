@@ -93,10 +93,12 @@ open issues in their respective sibling repositories.
 
 - The CLI JSON contract (`api_version`), on-disk schema, and MCP tool
   catalogue are pre-1.0 and may still change between beta releases.
-- SymMemory: candidate matching (suggesting a link instead of requiring
-  the user to already know the entity id) and writing relations into
-  SymMemory are not implemented — both need APIs that don't exist yet
-  upstream. See [docs/integrations/SYMMEMORY.md](docs/integrations/SYMMEMORY.md).
+- SymMemory: candidate matching and writing relations into SymMemory are
+  now implemented via the upstream `entity resolve` and `entity relate`
+  commands; see [docs/integrations/SYMMEMORY.md](docs/integrations/SYMMEMORY.md).
+  `memory show` still shells out to `entity show`, which resolves by name
+  rather than id, so context lookup may report `context_available: false`
+  for id-only links until SymMemory adds id-based entity show.
 - SymMeet: `meeting import --fixture` reads the real published meeting
   manifest format now that symaira-meet#19 landed; no real `symmeet`
   binary was available to verify the runtime discovery handshake

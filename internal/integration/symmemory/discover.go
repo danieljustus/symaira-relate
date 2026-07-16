@@ -7,11 +7,10 @@
 // does for SymVault.
 //
 // What this package intentionally does NOT do: automatic candidate
-// matching (needs symaira-memory#343's ResolveEntityCandidates) and
-// ID/provenance-rich relation writes (needs symaira-memory#344's
-// extended entity_relate). Both are still open upstream as of this
-// package's introduction — see docs/integrations/SYMMEMORY.md for the
-// full status and what a future change here needs once they land.
+// matching and ID/provenance-rich relation writes were historically
+// blocked on upstream symaira-memory#343/#344. Those APIs are now
+// available and are implemented in this package's Candidates and Relate
+// functions; see docs/integrations/SYMMEMORY.md for the full status.
 package symmemory
 
 import (
