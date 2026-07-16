@@ -13,3 +13,9 @@
 ### Issue #28: Resolve duplicate label semantics (enhancement vs feature)
 - Deleted enhancement label (no issues used it)
 - Method: gh label delete
+
+### Issue #29: Create GitHub Project v2 board for symaira-relate
+- Created project: symaira-relate (https://github.com/users/danieljustus/projects/17)
+- Fields created: Status (Todo/In Progress/Done), Priority (urgent/high/medium/low)
+- Note: Iteration field not available via CLI, must be added via GitHub UI
+- Method: gh project create, gh project field-create
