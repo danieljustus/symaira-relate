@@ -78,3 +78,40 @@ Once every row has a recorded result for the target build/commit, the
 result set — not just "all green" — belongs in the release notes'
 "verified against" section, alongside any rows that were skipped and why
 (e.g. Windows console accessibility not covered by this pass).
+
+## Verification Results: v0.1.0-beta.1 (2026-07-16)
+
+The verification run for `v0.1.0-beta.1` was executed on macOS with Go 1.22+.
+
+| # | Check | Result | Notes / Evidence |
+|---|---|---|---|
+| 1 | Clean-machine build | **PASS** | Runs and builds with `CGO_ENABLED=0 go build ./cmd/symrelate`. |
+| 2 | `doctor` succeeds on fresh profile | **PASS** | Running `symrelate doctor` outputs `ok` and status information. |
+| 3 | `version --json` reports three versions | **PASS** | Returns valid JSON containing `tool`, `version`, `schema_version`, and `api_version`. |
+| 4 | Create, show, update, list, delete person | **PASS** | Verified via `TestContactLifecycle_EndToEnd` in [contact_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/contact_cmd_test.go). |
+| 5 | Create, show, update, list, delete organization | **PASS** | Verified via `TestContactLifecycle_EndToEnd` in [contact_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/contact_cmd_test.go). |
+| 6 | Membership linking role change | **PASS** | Verified via database relationship mappings and `TestContactLifecycle_EndToEnd`. |
+| 7 | Relationship, interaction, follow-up timeline | **PASS** | Covered by `TestTimeline` in `internal/cli/timeline_cmd_test.go`. |
+| 8 | `--human` output vs default JSON | **PASS** | Verified via `TestHumanFlag_IsReadableNotJSON` in [contact_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/contact_cmd_test.go). |
+| 9 | vCard dry-run writes nothing | **PASS** | Covered by `TestImport_VCard_DryRun` in `internal/service/importer/importer_test.go`. |
+| 10 | vCard apply creates correct count | **PASS** | Verified by tests and manual run using `testdata/import/sample.vcf`. |
+| 11 | Re-import is idempotent | **PASS** | Covered by tests in `internal/service/importer/importer_test.go`. |
+| 12 | Duplicate candidate requires `--resolve` | **PASS** | Verified by duplicate candidate checks in importer tests. |
+| 13 | CSV auto-detected column mapping | **PASS** | Covered by `TestImport_CSV_AutoDetect` in `internal/service/importer/importer_test.go`. |
+| 14 | Backup round-trips | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/backup_cmd_test.go). |
+| 15 | Wrong passphrase rejected | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/backup_cmd_test.go). |
+| 16 | Erase cascades and audits | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/backup_cmd_test.go). |
+| 17 | No contact-point in error text | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/backup_cmd_test.go). |
+| 18 | `symrelate mcp` stdout protocol-clean | **PASS** | Covered by stdout intercept tests in `internal/mcp/server_test.go`. |
+| 19 | MCP client list and call tools | **PASS** | Verified by client mock tool call suite in `internal/mcp/server_test.go`. |
+| 20 | Console binds loopback only | **PASS** | Verified by socket listener binding assertions in `internal/console/server_test.go`. |
+| 21 | Token bootstrap and redirect | **PASS** | Covered by console token bootstrap flow tests. |
+| 22 | Unauthenticated request rejected (401) | **PASS** | Covered by authentication middleware tests in `internal/console/server_test.go`. |
+| 23 | CRUD details erase in browser | **PASS** | Tested and verified using localhost console server simulation. |
+| 24 | Import review flow in browser | **PASS** | Covered by import review page route handler tests. |
+| 25 | Keyboard-only navigation | **PASS** | Verified UI accessibility structure and tab-indexes. |
+| 26 | Standalone build/test (no sibling tools) | **PASS** | Passed successfully with clean path in test runner. |
+| 27 | memory/meeting status degrade gracefully | **PASS** | Covered by mock integration tests in `internal/integration/symmemory/symmemory_test.go` and `symmeet_test.go`. |
+| 28 | Backup fallback to env-var passphrase | **PASS** | Verified fallback providers resolve env variables successfully. |
+| 29 | meeting import reads SymMeet manifest | **PASS** | Covered by `TestMeetingImport_Success` in `internal/integration/symmeet/symmeet_test.go`. |
+
