@@ -1,5 +1,9 @@
 # Symaira Relate
 
+[![CI](https://github.com/danieljustus/symaira-relate/actions/workflows/ci.yml/badge.svg)](https://github.com/danieljustus/symaira-relate/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/danieljustus/symaira-relate)](https://goreportcard.com/report/github.com/danieljustus/symaira-relate)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 `symrelate` is a standalone, local-first contact and relationship manager.
 It stores people, organizations, relationships, interaction history and
 follow-ups in a single SQLite database on your machine — no account, no
@@ -111,6 +115,66 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues
 and [docs/BETA_MATRIX.md](docs/BETA_MATRIX.md) for the manual QA checklist
 run before each beta release. [CHANGELOG.md](CHANGELOG.md) tracks what's
 landed.
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph "User Interface"
+        CLI[CLI symrelate]
+        Console[Web Console]
+        MCP[MCP Server]
+    end
+
+    subgraph "Core"
+        Contact[Contact Manager]
+        Relationship[Relationship Engine]
+        Import[Import Pipeline]
+        Export[Export Engine]
+    end
+
+    subgraph "Storage"
+        SQLite[(SQLite Database)]
+        Backup[AES-256-GCM Backups]
+    end
+
+    subgraph "Optional Integrations"
+        SymMemory[SymMemory]
+        SymMeet[SymMeet]
+    end
+
+    CLI --> Contact
+    CLI --> Relationship
+    CLI --> Import
+    CLI --> Export
+    Console --> Contact
+    MCP --> Contact
+
+    Contact --> SQLite
+    Relationship --> SQLite
+    Import --> SQLite
+    Export --> SQLite
+
+    Contact --> Backup
+    SQLite --> Backup
+
+    Contact -.-> SymMemory
+    Import -.-> SymMeet
+
+    style CLI fill:#4CAF50,color:white
+    style Console fill:#2196F3,color:white
+    style MCP fill:#9C27B0,color:white
+    style SQLite fill:#FF9800,color:white
+    style Backup fill:#F44336,color:white
+```
+
+Key principles:
+- **Standalone-first**: No other Symaira tool required to build, run, or test
+- **Local-first**: All data stored in SQLite on user's machine
+- **Privacy by design**: Sensitive values never leave the local machine
+- **Optional integrations**: SymMemory and SymMeet detected at runtime, degrade gracefully
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design decisions.
 
 ## Development
 
