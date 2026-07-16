@@ -61,6 +61,10 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 				Value:    s.token,
 				Path:     "/",
 				HttpOnly: true,
+				// Browsers treat 127.0.0.1/localhost as a secure context,
+				// so the Secure attribute is honored even over plain HTTP
+				// there — and required everywhere else.
+				Secure:   true,
 				SameSite: http.SameSiteStrictMode,
 			})
 			redirectURL := *r.URL
