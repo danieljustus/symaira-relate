@@ -56,30 +56,30 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		// the very first load.
 		if r.Method == http.MethodGet {
 			if qToken := r.URL.Query().Get("token"); qToken != "" && constantTimeEqual(qToken, s.token) {
-			http.SetCookie(w, &http.Cookie{
-				Name:     sessionCookieName,
-				Value:    s.token,
-				Path:     "/",
-				HttpOnly: true,
-				// Browsers treat 127.0.0.1/localhost as a secure context,
-				// so the Secure attribute is honored even over plain HTTP
-				// there — and required everywhere else.
-				Secure:   true,
-				SameSite: http.SameSiteStrictMode,
-			})
-			redirectURL := *r.URL
-			q := redirectURL.Query()
-			q.Del("token")
-			redirectURL.RawQuery = q.Encode()
-			// The target derives from the request URL; only redirect when
-			// it is a local path (no host), so a crafted request target
-			// like "//evil.example/x" cannot become an off-site redirect.
-			target, err := url.Parse(strings.ReplaceAll(redirectURL.RequestURI(), "\\", "/"))
-			if err != nil || target.Hostname() != "" {
-				writeJSONError(w, http.StatusBadRequest, "invalid redirect target")
-				return
-			}
-			http.Redirect(w, r, redirectURL.RequestURI(), http.StatusFound)
+				http.SetCookie(w, &http.Cookie{
+					Name:     sessionCookieName,
+					Value:    s.token,
+					Path:     "/",
+					HttpOnly: true,
+					// Browsers treat 127.0.0.1/localhost as a secure context,
+					// so the Secure attribute is honored even over plain HTTP
+					// there — and required everywhere else.
+					Secure:   true,
+					SameSite: http.SameSiteStrictMode,
+				})
+				redirectURL := *r.URL
+				q := redirectURL.Query()
+				q.Del("token")
+				redirectURL.RawQuery = q.Encode()
+				// The target derives from the request URL; only redirect when
+				// it is a local path (no host), so a crafted request target
+				// like "//evil.example/x" cannot become an off-site redirect.
+				target, err := url.Parse(strings.ReplaceAll(redirectURL.RequestURI(), "\\", "/"))
+				if err != nil || target.Hostname() != "" {
+					writeJSONError(w, http.StatusBadRequest, "invalid redirect target")
+					return
+				}
+				http.Redirect(w, r, redirectURL.RequestURI(), http.StatusFound)
 				return
 			}
 		}
