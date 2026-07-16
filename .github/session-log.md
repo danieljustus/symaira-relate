@@ -9,3 +9,7 @@
 ### Issue #27: Create missing priority and coordination labels
 - Created labels: priority: urgent, priority: low, auto-pr, auto-stalled
 - Method: gh label create
+
+### Issue #28: Resolve duplicate label semantics (enhancement vs feature)
+- Deleted enhancement label (no issues used it)
+- Method: gh label delete
