@@ -1,9 +1,7 @@
 // Package memorylink defines the pure domain type for a Relate-owned link
 // from a contact/organization to a confirmed SymMemory entity id. See
 // internal/integration/symmemory for the runtime discovery of SymMemory
-// itself, and docs/integrations/SYMMEMORY.md for the full design —
-// including what is intentionally not implemented yet, pending
-// symaira-memory#343 and #344.
+// itself, and docs/integrations/SYMMEMORY.md for the full design.
 package memorylink
 
 import "time"
