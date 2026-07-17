@@ -14,16 +14,22 @@ Backup and restore need a passphrase to derive an AES-256 encryption key
 abstraction; `DefaultKeyProviders` tries, in order:
 
 1. An explicit passphrase (the `--passphrase` CLI flag, or a value handed
-   in directly by a test).
+   in directly by a test). **Warning:** the `--passphrase` flag value
+   appears in shell history and process listings; prefer the interactive
+   prompt or SymVault for sensitive passphrases.
 2. The `SYMRELATE_BACKUP_PASSPHRASE` environment variable.
 3. A local SymVault installation, detected at runtime via a `PATH` lookup
    for a `symvault` binary — never a compile-time dependency (see
    [ARCHITECTURE.md](../ARCHITECTURE.md)'s standalone-first rule). When
    SymVault is not installed, this step is skipped immediately.
+4. An interactive terminal prompt (no-echo via `golang.org/x/term`),
+   which is the final fallback when stdin is a TTY. On backup create the
+   prompt asks for the passphrase twice to catch typos; on restore it
+   prompts once.
 
-Steps 1–2 work with zero external tools installed — that is the
-documented standalone fallback. SymVault is always a convenience; no
-symrelate command fails to build, run or pass its tests without it.
+Steps 1–3 work with zero external tools installed — that is the
+documented standalone fallback. The terminal prompt (step 4) requires a
+TTY and `golang.org/x/term`; it is skipped in piped/CI environments.
 
 ## Redaction
 

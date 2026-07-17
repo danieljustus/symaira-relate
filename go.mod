@@ -6,6 +6,7 @@ require (
 	github.com/emersion/go-vcard v0.0.0-20260618161152-d854b7e0e2d3
 	github.com/google/uuid v1.6.0
 	golang.org/x/crypto v0.54.0
+	golang.org/x/term v0.45.0
 	modernc.org/sqlite v1.54.0
 )
 

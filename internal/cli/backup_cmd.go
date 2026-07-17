@@ -35,13 +35,20 @@ func runBackup(ctx context.Context, iostreams IO, args []string) error {
 }
 
 // resolvePassphrase tries an explicit --passphrase flag, then the
-// environment variable, then SymVault if installed — see
-// security.DefaultKeyProviders and docs/PRIVACY.md for the documented
-// standalone fallback.
+// environment variable, then SymVault if installed, then an interactive
+// terminal prompt — see security.DefaultKeyProviders and docs/PRIVACY.md.
 func resolvePassphrase(ctx context.Context, explicit string) ([]byte, error) {
 	key, _, err := security.DefaultKeyProviders([]byte(explicit)).Resolve(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("no passphrase available: pass --passphrase, set %s, or install SymVault", security.DefaultPassphraseEnvVar)
+		return nil, fmt.Errorf("no passphrase available: pass --passphrase, set %s, install SymVault, or enter at the prompt", security.DefaultPassphraseEnvVar)
+	}
+	return key, nil
+}
+
+func resolvePassphraseConfirm(ctx context.Context, explicit string) ([]byte, error) {
+	key, _, err := security.DefaultKeyProvidersConfirm([]byte(explicit)).Resolve(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("no passphrase available: pass --passphrase, set %s, install SymVault, or enter at the prompt", security.DefaultPassphraseEnvVar)
 	}
 	return key, nil
 }
@@ -50,7 +57,7 @@ func backupCreate(ctx context.Context, iostreams IO, args []string) error {
 	fs := flag.NewFlagSet("backup create", flag.ContinueOnError)
 	fs.SetOutput(iostreams.Stderr)
 	out := fs.String("out", "", "output backup file path (required)")
-	passphrase := fs.String("passphrase", "", "encryption passphrase (falls back to env/SymVault)")
+	passphrase := fs.String("passphrase", "", "encryption passphrase (falls back to env/SymVault/terminal prompt; WARNING: visible in shell history)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -58,7 +65,7 @@ func backupCreate(ctx context.Context, iostreams IO, args []string) error {
 		return fmt.Errorf("usage: symrelate backup create --out <file> [--passphrase ...]")
 	}
 
-	key, err := resolvePassphrase(ctx, *passphrase)
+	key, err := resolvePassphraseConfirm(ctx, *passphrase)
 	if err != nil {
 		return err
 	}
@@ -88,7 +95,7 @@ func backupRestore(ctx context.Context, iostreams IO, args []string) error {
 	fs.SetOutput(iostreams.Stderr)
 	in := fs.String("in", "", "backup file to restore (required)")
 	target := fs.String("target", "", "path to write the restored database (required; must be a clean profile)")
-	passphrase := fs.String("passphrase", "", "encryption passphrase (falls back to env/SymVault)")
+	passphrase := fs.String("passphrase", "", "encryption passphrase (falls back to env/SymVault/terminal prompt; WARNING: visible in shell history)")
 	force := fs.Bool("force", false, "overwrite an existing database at --target")
 	if err := fs.Parse(args); err != nil {
 		return err

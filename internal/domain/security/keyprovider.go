@@ -7,8 +7,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
+
+	"golang.org/x/term"
 )
 
 // ErrKeyUnavailable is returned by a KeyProvider that has no key material
@@ -112,14 +115,81 @@ func (p SymVaultKeyProvider) Resolve(ctx context.Context) ([]byte, string, error
 	return passphrase, "symvault", nil
 }
 
+// TerminalKeyProvider reads a passphrase from the terminal without echo.
+// It returns ErrKeyUnavailable when stdin is not a terminal (e.g. piped
+// input, cron, CI) so callers fall back to the next provider silently.
+type TerminalKeyProvider struct {
+	Prompt    string          // defaults to "Passphrase: " when empty
+	Confirm   bool            // when true, prompt a second time and reject mismatches
+	StdinFunc func() *os.File // override for testing; nil means os.Stdin
+}
+
+func (p TerminalKeyProvider) Resolve(_ context.Context) ([]byte, string, error) {
+	fd := int(p.getStdin().Fd())
+	if !term.IsTerminal(fd) {
+		return nil, "", ErrKeyUnavailable
+	}
+
+	prompt := p.Prompt
+	if prompt == "" {
+		prompt = "Passphrase: "
+	}
+
+	fmt.Fprint(os.Stderr, prompt)
+	passphrase, err := term.ReadPassword(fd)
+	if err != nil {
+		return nil, "", fmt.Errorf("terminal read failed: %w", err)
+	}
+	fmt.Fprintln(os.Stderr)
+
+	if p.Confirm {
+		confirmPrompt := "Confirm passphrase: "
+		fmt.Fprint(os.Stderr, confirmPrompt)
+		confirm, err := term.ReadPassword(fd)
+		if err != nil {
+			return nil, "", fmt.Errorf("terminal read failed: %w", err)
+		}
+		fmt.Fprintln(os.Stderr)
+
+		if !bytes.Equal(passphrase, confirm) {
+			return nil, "", fmt.Errorf("passphrases do not match")
+		}
+	}
+
+	if len(passphrase) == 0 {
+		return nil, "", ErrKeyUnavailable
+	}
+	return passphrase, "terminal", nil
+}
+
+func (p TerminalKeyProvider) getStdin() *os.File {
+	if p.StdinFunc != nil {
+		return p.StdinFunc()
+	}
+	return os.Stdin
+}
+
 // DefaultKeyProviders returns the standard resolution order: an explicit
 // passphrase (if any), then the environment variable, then SymVault if
-// installed. Every step before SymVault works with zero external
-// dependencies, satisfying the documented standalone fallback.
+// installed, then an interactive terminal prompt. Every step before the
+// terminal works with zero external dependencies, satisfying the
+// documented standalone fallback.
 func DefaultKeyProviders(explicit []byte) Chain {
 	return Chain{
 		StaticKeyProvider{Passphrase: explicit},
 		EnvKeyProvider{},
 		SymVaultKeyProvider{},
+		TerminalKeyProvider{},
+	}
+}
+
+// DefaultKeyProvidersConfirm returns the same chain but with a confirming
+// terminal prompt (used by backup create to catch typos).
+func DefaultKeyProvidersConfirm(explicit []byte) Chain {
+	return Chain{
+		StaticKeyProvider{Passphrase: explicit},
+		EnvKeyProvider{},
+		SymVaultKeyProvider{},
+		TerminalKeyProvider{Confirm: true},
 	}
 }
