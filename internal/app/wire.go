@@ -18,7 +18,7 @@ func wire(paths xdg.Paths, db *sql.DB) *App {
 	contacts := contactsvc.New(db)
 	return &App{
 		Paths:         paths,
-		DB:            db,
+		db:            db,
 		Contacts:      contacts,
 		Relationships: relationshipsvc.New(db),
 		Security:      securitysvc.New(db),

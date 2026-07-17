@@ -8,6 +8,7 @@ import (
 
 	"github.com/danieljustus/symaira-relate/internal/domain/security"
 	"github.com/danieljustus/symaira-relate/internal/errs"
+	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
 )
 
 // EraseContact permanently removes a person and every row that names them
@@ -24,7 +25,7 @@ func (s *Service) EraseContact(ctx context.Context, personID string) (*security.
 	const op = "security.EraseContact"
 
 	var summary *security.EraseSummary
-	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
+	err := sqlite.WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		var err error
 		summary, err = countPersonData(ctx, tx, personID)
 		if err != nil {
@@ -52,7 +53,7 @@ func (s *Service) EraseOrganization(ctx context.Context, organizationID string) 
 	const op = "security.EraseOrganization"
 
 	var summary *security.EraseSummary
-	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
+	err := sqlite.WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		var err error
 		summary, err = countOrganizationData(ctx, tx, organizationID)
 		if err != nil {
@@ -140,16 +141,4 @@ func eraseDetail(s security.EraseSummary) string {
 		"contact_points=%d aliases=%d memberships=%d relationships=%d interactions=%d follow_ups=%d",
 		s.ContactPointsRemoved, s.AliasesRemoved, s.MembershipsRemoved, s.RelationshipsRemoved, s.InteractionsRemoved, s.FollowUpsRemoved,
 	)
-}
-
-func withTx(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if err := fn(tx); err != nil {
-		return err
-	}
-	return tx.Commit()
 }

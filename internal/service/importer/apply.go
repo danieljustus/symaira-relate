@@ -7,6 +7,7 @@ import (
 	contactdomain "github.com/danieljustus/symaira-relate/internal/domain/contact"
 	"github.com/danieljustus/symaira-relate/internal/domain/importer"
 	"github.com/danieljustus/symaira-relate/internal/errs"
+	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
 )
 
 // Apply writes plan.Rows to the database. Rows with no duplicate
@@ -30,7 +31,7 @@ func (s *Service) Apply(ctx context.Context, plan *importer.ImportPlan, resoluti
 
 	result := &importer.RunResult{Source: plan.Source}
 
-	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
+	err := sqlite.WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		for _, row := range plan.Rows {
 			res, hasRes := resByRow[row.RowNumber]
 

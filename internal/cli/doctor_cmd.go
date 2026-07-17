@@ -32,7 +32,7 @@ func runDoctor(ctx context.Context, iostreams IO, args []string) error {
 	fmt.Fprintf(iostreams.Stderr, "cache dir:  %s\n", a.Paths.CacheDir)
 	fmt.Fprintf(iostreams.Stderr, "database:   %s\n", a.Paths.DatabasePath())
 
-	if err := a.DB.PingContext(ctx); err != nil {
+	if err := a.Ping(ctx); err != nil {
 		fmt.Fprintf(iostreams.Stderr, "ping: FAIL (%v)\n", err)
 		return err
 	}

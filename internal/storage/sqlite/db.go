@@ -48,6 +48,23 @@ func Open(ctx context.Context, path string) (*sql.DB, error) {
 	return db, nil
 }
 
+// WithTx runs fn inside a transaction. It begins a transaction, defers
+// a rollback (which is a no-op after a successful commit), calls fn,
+// and commits on success. Any error from fn causes the transaction to
+// roll back and the error to be returned.
+func WithTx(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // OpenMemory opens an in-process, private SQLite database for tests. Each
 // call returns an independent database.
 func OpenMemory(ctx context.Context) (*sql.DB, error) {

@@ -26,7 +26,7 @@ import (
 // concurrently.
 type App struct {
 	Paths xdg.Paths
-	DB    *sql.DB
+	db    *sql.DB
 
 	Contacts      *contactsvc.Service
 	Relationships *relationshipsvc.Service
@@ -93,10 +93,15 @@ func OpenMemory(ctx context.Context) (*App, error) {
 }
 
 func (a *App) Close() error {
-	if a.DB == nil {
+	if a.db == nil {
 		return nil
 	}
-	return a.DB.Close()
+	return a.db.Close()
+}
+
+// Ping checks database connectivity.
+func (a *App) Ping(ctx context.Context) error {
+	return a.db.PingContext(ctx)
 }
 
 // RestoreBackup decrypts a backup into targetDBPath. It does not require
