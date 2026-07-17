@@ -219,3 +219,25 @@ func TestHandler_ErrorResponse_NeverLeaksRawErrorType(t *testing.T) {
 		t.Errorf("expected an error field in body: %v", body)
 	}
 }
+
+func TestHandler_OversizedBody_IsRejected(t *testing.T) {
+	s, token := testServer(t)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+
+	oversized := strings.Repeat("x", (4<<20)+1)
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/contacts", strings.NewReader(oversized))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d for oversized body", resp.StatusCode, http.StatusBadRequest)
+	}
+}
