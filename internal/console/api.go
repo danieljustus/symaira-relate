@@ -16,6 +16,10 @@ import (
 	"github.com/danieljustus/symaira-relate/internal/errs"
 )
 
+// maxBodySize bounds JSON request bodies to 4 MiB, matching the MCP
+// transport limit. Oversized bodies are rejected before decoding.
+const maxBodySize = 4 << 20 // 4 MiB
+
 func parseRFC3339(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339, s)
 }
@@ -23,7 +27,8 @@ func parseRFC3339(s string) (time.Time, error) {
 // decodeJSON reads and strictly decodes a JSON request body — unknown
 // fields are rejected so a client typo fails loudly instead of silently
 // being ignored, the same contract the MCP tool arguments use.
-func decodeJSON(r *http.Request, dst any) error {
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
@@ -88,7 +93,7 @@ type contactCreateRequest struct {
 
 func (s *Server) handleContactCreate(w http.ResponseWriter, r *http.Request) {
 	var req contactCreateRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeErr(w, err)
 		return
 	}
@@ -109,7 +114,7 @@ type contactUpdateRequest struct {
 
 func (s *Server) handleContactUpdate(w http.ResponseWriter, r *http.Request) {
 	var req contactUpdateRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeErr(w, err)
 		return
 	}
@@ -185,7 +190,7 @@ type organizationCreateRequest struct {
 
 func (s *Server) handleOrganizationCreate(w http.ResponseWriter, r *http.Request) {
 	var req organizationCreateRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeErr(w, err)
 		return
 	}
@@ -204,7 +209,7 @@ type organizationUpdateRequest struct {
 
 func (s *Server) handleOrganizationUpdate(w http.ResponseWriter, r *http.Request) {
 	var req organizationUpdateRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeErr(w, err)
 		return
 	}
@@ -256,7 +261,7 @@ type membershipCreateRequest struct {
 
 func (s *Server) handleMembershipCreate(w http.ResponseWriter, r *http.Request) {
 	var req membershipCreateRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeErr(w, err)
 		return
 	}
@@ -313,7 +318,7 @@ type followUpCreateRequest struct {
 
 func (s *Server) handleFollowUpCreate(w http.ResponseWriter, r *http.Request) {
 	var req followUpCreateRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeErr(w, err)
 		return
 	}
@@ -438,7 +443,7 @@ func columnMappingFromRequest(m map[string]string) importerdomain.ColumnMapping 
 
 func (s *Server) handleImportPlan(w http.ResponseWriter, r *http.Request) {
 	var req importRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeErr(w, err)
 		return
 	}
@@ -457,7 +462,7 @@ func (s *Server) handleImportPlan(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleImportApply(w http.ResponseWriter, r *http.Request) {
 	var req importRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeErr(w, err)
 		return
 	}
