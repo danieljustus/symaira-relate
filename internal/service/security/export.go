@@ -86,52 +86,55 @@ func (s *Service) exportPeople(ctx context.Context) ([]ExportPerson, error) {
 	}
 	rows.Close()
 
+	cpRows, err := s.db.QueryContext(ctx,
+		"SELECT person_id, kind, raw_value FROM contact_points ORDER BY person_id, kind, is_preferred DESC, created_at")
+	if err != nil {
+		return nil, err
+	}
+	cpMap := make(map[string]map[string][]string)
+	for cpRows.Next() {
+		var personID, kind, value string
+		if err := cpRows.Scan(&personID, &kind, &value); err != nil {
+			cpRows.Close()
+			return nil, err
+		}
+		if cpMap[personID] == nil {
+			cpMap[personID] = make(map[string][]string)
+		}
+		cpMap[personID][kind] = append(cpMap[personID][kind], value)
+	}
+	if err := cpRows.Err(); err != nil {
+		cpRows.Close()
+		return nil, err
+	}
+	cpRows.Close()
+
+	tagRows, err := s.db.QueryContext(ctx,
+		"SELECT et.person_id, t.name FROM tags t JOIN entity_tags et ON et.tag_id = t.id ORDER BY et.person_id, t.name")
+	if err != nil {
+		return nil, err
+	}
+	tagMap := make(map[string][]string)
+	for tagRows.Next() {
+		var personID, name string
+		if err := tagRows.Scan(&personID, &name); err != nil {
+			tagRows.Close()
+			return nil, err
+		}
+		tagMap[personID] = append(tagMap[personID], name)
+	}
+	if err := tagRows.Err(); err != nil {
+		tagRows.Close()
+		return nil, err
+	}
+	tagRows.Close()
+
 	for i := range out {
-		if out[i].Emails, err = s.contactPointValues(ctx, out[i].ID, "email"); err != nil {
-			return nil, err
+		if cp := cpMap[out[i].ID]; cp != nil {
+			out[i].Emails = cp["email"]
+			out[i].Phones = cp["phone"]
 		}
-		if out[i].Phones, err = s.contactPointValues(ctx, out[i].ID, "phone"); err != nil {
-			return nil, err
-		}
-		if out[i].Tags, err = s.personTags(ctx, out[i].ID); err != nil {
-			return nil, err
-		}
+		out[i].Tags = tagMap[out[i].ID]
 	}
 	return out, nil
-}
-
-func (s *Service) contactPointValues(ctx context.Context, personID, kind string) ([]string, error) {
-	rows, err := s.db.QueryContext(ctx,
-		"SELECT raw_value FROM contact_points WHERE person_id = ? AND kind = ? ORDER BY is_preferred DESC, created_at", personID, kind)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var v string
-		if err := rows.Scan(&v); err != nil {
-			return nil, err
-		}
-		out = append(out, v)
-	}
-	return out, rows.Err()
-}
-
-func (s *Service) personTags(ctx context.Context, personID string) ([]string, error) {
-	rows, err := s.db.QueryContext(ctx,
-		"SELECT t.name FROM tags t JOIN entity_tags et ON et.tag_id = t.id WHERE et.person_id = ? ORDER BY t.name", personID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var v string
-		if err := rows.Scan(&v); err != nil {
-			return nil, err
-		}
-		out = append(out, v)
-	}
-	return out, rows.Err()
 }
