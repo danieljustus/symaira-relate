@@ -17,7 +17,9 @@ func init() {
 		Long: `Create or restore an AES-256-GCM encrypted backup of the local SQLite database.
 
 The passphrase is resolved in order: --passphrase flag, SYMRELATE_BACKUP_PASSPHRASE
-environment variable, or SymVault if installed.`,
+environment variable, SymVault if installed, or an interactive terminal prompt.
+Backup create refuses to overwrite an existing file; restore refuses to
+overwrite an existing database unless --force is passed.`,
 		Examples: `  symrelate backup create --out backup.enc --passphrase "correct-horse-battery-staple"
   symrelate backup restore --in backup.enc --target /tmp/restored.db --passphrase "correct-horse-battery-staple"`,
 		Run: runBackup,
