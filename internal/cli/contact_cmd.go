@@ -14,7 +14,13 @@ func init() {
 	Register(&Command{
 		Name:  "contact",
 		Short: "Manage people (add, show, list, update, delete)",
-		Run:   runContact,
+		Long: `Manage contacts in the local database. Subcommands include add, show, list,
+update, delete, erase, tag, classify, and add-point.`,
+		Examples: `  symrelate contact add --name "Ada Lovelace" --email ada@example.com
+  symrelate contact show <id>
+  symrelate contact list --query "Ada"
+  symrelate contact add-point --kind phone --value "+1 555 000 1111" <id>`,
+		Run: runContact,
 	})
 }
 

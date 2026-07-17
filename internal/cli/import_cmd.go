@@ -18,7 +18,16 @@ func init() {
 	Register(&Command{
 		Name:  "import",
 		Short: "Import contacts from vCard or CSV, with a reviewed dedup workflow",
-		Run:   runImport,
+		Long: `Import contacts from vCard (3.0/4.0) or CSV files into the local database.
+
+A dry run never writes; duplicate candidates (matched on contact points, names,
+or a prior import of the same source) require an explicit --resolve flag.
+Re-importing an unchanged source is idempotent — nothing is duplicated.`,
+		Examples: `  symrelate import vcard --dry-run testdata/import/sample.vcf
+  symrelate import vcard testdata/import/sample.vcf
+  symrelate import csv --map name=Full Name,email=Email sample.csv --dry-run
+  symrelate import runs`,
+		Run: runImport,
 	})
 }
 
