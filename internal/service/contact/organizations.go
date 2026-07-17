@@ -8,6 +8,7 @@ import (
 	"github.com/danieljustus/symaira-relate/internal/domain/contact"
 	"github.com/danieljustus/symaira-relate/internal/domain/page"
 	"github.com/danieljustus/symaira-relate/internal/errs"
+	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
 )
 
 func (s *Service) CreateOrganization(ctx context.Context, in contact.OrganizationInput) (*contact.Organization, error) {
@@ -167,7 +168,7 @@ func (s *Service) AddOrganizationTag(ctx context.Context, orgID, tag string) err
 	if strings.TrimSpace(tag) == "" {
 		return errs.Invalid("contact.AddOrganizationTag", "tag must not be empty", nil)
 	}
-	return s.withTx(ctx, func(tx *sql.Tx) error {
+	return sqlite.WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		return addTag(ctx, tx, organizationRef(orgID), tag)
 	})
 }

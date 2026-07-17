@@ -8,6 +8,7 @@ import (
 	"github.com/danieljustus/symaira-relate/internal/domain/contact"
 	"github.com/danieljustus/symaira-relate/internal/domain/page"
 	"github.com/danieljustus/symaira-relate/internal/errs"
+	"github.com/danieljustus/symaira-relate/internal/storage/sqlite"
 )
 
 // CreatePerson inserts a new person. DisplayName is required; all other
@@ -188,7 +189,7 @@ func (s *Service) AddPersonTag(ctx context.Context, personID, tag string) error 
 	if strings.TrimSpace(tag) == "" {
 		return errs.Invalid("contact.AddPersonTag", "tag must not be empty", nil)
 	}
-	return s.withTx(ctx, func(tx *sql.Tx) error {
+	return sqlite.WithTx(ctx, s.db, func(tx *sql.Tx) error {
 		return addTag(ctx, tx, personRef(personID), tag)
 	})
 }

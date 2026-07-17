@@ -66,16 +66,3 @@ type execer interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
-
-func (s *Service) withTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if err := fn(tx); err != nil {
-		return err
-	}
-	return tx.Commit()
-}

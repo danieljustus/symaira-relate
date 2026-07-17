@@ -6,7 +6,6 @@
 package importer
 
 import (
-	"context"
 	"database/sql"
 	"time"
 
@@ -34,16 +33,4 @@ func formatTime(t time.Time) string {
 
 func now() time.Time {
 	return time.Now().UTC()
-}
-
-func withTx(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) error {
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if err := fn(tx); err != nil {
-		return err
-	}
-	return tx.Commit()
 }
