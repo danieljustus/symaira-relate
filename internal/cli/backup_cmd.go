@@ -89,11 +89,18 @@ func backupRestore(ctx context.Context, iostreams IO, args []string) error {
 	in := fs.String("in", "", "backup file to restore (required)")
 	target := fs.String("target", "", "path to write the restored database (required; must be a clean profile)")
 	passphrase := fs.String("passphrase", "", "encryption passphrase (falls back to env/SymVault)")
+	force := fs.Bool("force", false, "overwrite an existing database at --target")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *in == "" || *target == "" {
-		return fmt.Errorf("usage: symrelate backup restore --in <file> --target <db-path> [--passphrase ...]")
+		return fmt.Errorf("usage: symrelate backup restore --in <file> --target <db-path> [--passphrase ...] [--force]")
+	}
+
+	if !*force {
+		if _, err := os.Stat(*target); err == nil {
+			return fmt.Errorf("refusing to overwrite existing database at %s; pass --force to overwrite", *target)
+		}
 	}
 
 	key, err := resolvePassphrase(ctx, *passphrase)

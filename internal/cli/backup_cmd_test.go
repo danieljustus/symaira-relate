@@ -248,3 +248,69 @@ func TestSecureFile_FailsIfExists(t *testing.T) {
 		t.Fatal("expected second export to same path to fail")
 	}
 }
+
+func TestBackupRestore_RefusesOverwriteWithoutForce(t *testing.T) {
+	setTestProfileDirs(t)
+
+	// Create a person and a backup
+	_, stderr, code := runCLI(t, "contact", "add", "--name", "Test User", "--email", "test@example.com")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+
+	backupFile := filepath.Join(t.TempDir(), "backup.enc")
+	_, stderr, code = runCLI(t, "backup", "create", "--out", backupFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("backup create: code=%d stderr=%s", code, stderr)
+	}
+
+	// Restore once to create the target
+	targetFile := filepath.Join(t.TempDir(), "restored.db")
+	_, stderr, code = runCLI(t, "backup", "restore", "--in", backupFile, "--target", targetFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("first restore: code=%d stderr=%s", code, stderr)
+	}
+
+	// Second restore without --force should fail
+	_, stderr, code = runCLI(t, "backup", "restore", "--in", backupFile, "--target", targetFile, "--passphrase", "test-passphrase")
+	if code == 0 {
+		t.Fatal("expected restore to existing target without --force to fail")
+	}
+	if !strings.Contains(stderr, "--force") {
+		t.Errorf("expected error to mention --force, got: %s", stderr)
+	}
+}
+
+func TestBackupRestore_ForceOverwritesExisting(t *testing.T) {
+	setTestProfileDirs(t)
+
+	// Create a person and a backup
+	_, stderr, code := runCLI(t, "contact", "add", "--name", "Test User", "--email", "test@example.com")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+
+	backupFile := filepath.Join(t.TempDir(), "backup.enc")
+	_, stderr, code = runCLI(t, "backup", "create", "--out", backupFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("backup create: code=%d stderr=%s", code, stderr)
+	}
+
+	// Restore once to create the target
+	targetFile := filepath.Join(t.TempDir(), "restored.db")
+	_, stderr, code = runCLI(t, "backup", "restore", "--in", backupFile, "--target", targetFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("first restore: code=%d stderr=%s", code, stderr)
+	}
+
+	// Restore again with --force should succeed
+	_, stderr, code = runCLI(t, "backup", "restore", "--in", backupFile, "--target", targetFile, "--passphrase", "test-passphrase", "--force")
+	if code != 0 {
+		t.Fatalf("restore with --force: code=%d stderr=%s", code, stderr)
+	}
+
+	// Verify target still exists
+	if _, err := os.Stat(targetFile); os.IsNotExist(err) {
+		t.Fatalf("target file should exist after --force restore: %s", targetFile)
+	}
+}
