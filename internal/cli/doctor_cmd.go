@@ -9,9 +9,11 @@ import (
 
 func init() {
 	Register(&Command{
-		Name:  "doctor",
-		Short: "Check the local environment and database health",
-		Run:   runDoctor,
+		Name:     "doctor",
+		Short:    "Check the local environment and database health",
+		Long:     `Verify that config, data and cache directories exist and the SQLite database is reachable. Output is always safe to paste into a bug report — no contact data is printed.`,
+		Examples: `  symrelate doctor`,
+		Run:      runDoctor,
 	})
 }
 

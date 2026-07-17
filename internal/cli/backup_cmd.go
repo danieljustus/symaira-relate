@@ -14,7 +14,13 @@ func init() {
 	Register(&Command{
 		Name:  "backup",
 		Short: "Create or restore an encrypted database backup",
-		Run:   runBackup,
+		Long: `Create or restore an AES-256-GCM encrypted backup of the local SQLite database.
+
+The passphrase is resolved in order: --passphrase flag, SYMRELATE_PASSPHRASE
+environment variable, or SymVault if installed.`,
+		Examples: `  symrelate backup create --out backup.enc --passphrase "correct-horse-battery-staple"
+  symrelate backup restore --in backup.enc --target /tmp/restored.db --passphrase "correct-horse-battery-staple"`,
+		Run: runBackup,
 	})
 }
 

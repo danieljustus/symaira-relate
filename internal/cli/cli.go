@@ -23,9 +23,11 @@ type IO struct {
 
 // Command is one top-level subcommand.
 type Command struct {
-	Name  string
-	Short string
-	Run   func(ctx context.Context, io IO, args []string) error
+	Name     string
+	Short    string
+	Long     string
+	Examples string
+	Run      func(ctx context.Context, io IO, args []string) error
 }
 
 var registry = map[string]*Command{}
@@ -50,6 +52,9 @@ func Run(ctx context.Context, iostreams IO, args []string) int {
 
 	name := args[0]
 	if name == "-h" || name == "--help" || name == "help" {
+		if len(args) > 1 {
+			return printCmdHelp(iostreams.Stdout, args[1])
+		}
 		printUsage(iostreams.Stdout)
 		return 0
 	}
@@ -61,12 +66,37 @@ func Run(ctx context.Context, iostreams IO, args []string) int {
 		return 2
 	}
 
+	if len(args) > 1 && (args[1] == "--help" || args[1] == "-h") {
+		if cmd.Long != "" || cmd.Examples != "" {
+			printCmdHelp(iostreams.Stdout, name)
+			return 0
+		}
+	}
+
 	if err := cmd.Run(ctx, iostreams, args[1:]); err != nil {
 		// Last line of defense: mask any contact-like value that reached
 		// an error message even if a call site forgot to keep it out —
 		// see docs/PRIVACY.md.
 		fmt.Fprintf(iostreams.Stderr, "symrelate: %s\n", security.Redact(err.Error()))
 		return 1
+	}
+	return 0
+}
+
+// printCmdHelp prints the long help and examples for a single command.
+func printCmdHelp(w io.Writer, name string) int {
+	cmd, ok := registry[name]
+	if !ok {
+		fmt.Fprintf(w, "symrelate: unknown command %q\n", name)
+		return 2
+	}
+	fmt.Fprintf(w, "Usage: symrelate %s [flags]\n", name)
+	fmt.Fprintf(w, "\n%s\n", cmd.Short)
+	if cmd.Long != "" {
+		fmt.Fprintf(w, "\n%s\n", cmd.Long)
+	}
+	if cmd.Examples != "" {
+		fmt.Fprintf(w, "\nExamples:\n%s\n", cmd.Examples)
 	}
 	return 0
 }
@@ -80,4 +110,6 @@ func printUsage(w io.Writer) {
 	for _, n := range names {
 		fmt.Fprintf(w, "  %-12s %s\n", n, registry[n].Short)
 	}
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Run 'symrelate help <command>' for detailed usage and examples.")
 }
