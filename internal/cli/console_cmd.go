@@ -15,7 +15,10 @@ func init() {
 	Register(&Command{
 		Name:  "console",
 		Short: "Run the local web console on 127.0.0.1 (see docs/CONSOLE.md)",
-		Run:   runConsole,
+		Long:  `Start a localhost-only web UI for browsing and managing contacts in a browser. A session token is generated automatically and printed in the startup URL.`,
+		Examples: `  symrelate console
+  symrelate console --port 8080`,
+		Run: runConsole,
 	})
 }
 
