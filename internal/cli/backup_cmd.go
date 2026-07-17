@@ -69,7 +69,7 @@ func backupCreate(ctx context.Context, iostreams IO, args []string) error {
 	}
 	defer a.Close()
 
-	f, err := os.Create(*out)
+	f, err := createSecureFile(*out)
 	if err != nil {
 		return fmt.Errorf("failed to create backup file: %w", err)
 	}
