@@ -176,3 +176,141 @@ func TestBackupRestoreAndErase_CLI(t *testing.T) {
 		t.Errorf("expected redacted phone placeholder in stderr, got: %s", stderr)
 	}
 }
+
+func TestExportFile_Permissions(t *testing.T) {
+	setTestProfileDirs(t)
+
+	// Create a person so the export has data
+	_, stderr, code := runCLI(t, "contact", "add", "--name", "Test User", "--email", "test@example.com")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+
+	exportFile := filepath.Join(t.TempDir(), "export.json")
+	_, stderr, code = runCLI(t, "export", "json", "--out", exportFile)
+	if code != 0 {
+		t.Fatalf("export: code=%d stderr=%s", code, stderr)
+	}
+
+	info, err := os.Stat(exportFile)
+	if err != nil {
+		t.Fatalf("stat export file: %v", err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Errorf("export file permissions = %o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestBackupFile_Permissions(t *testing.T) {
+	setTestProfileDirs(t)
+
+	// Create a person so the backup has data
+	_, stderr, code := runCLI(t, "contact", "add", "--name", "Test User", "--email", "test@example.com")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+
+	backupFile := filepath.Join(t.TempDir(), "backup.enc")
+	_, stderr, code = runCLI(t, "backup", "create", "--out", backupFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("backup create: code=%d stderr=%s", code, stderr)
+	}
+
+	info, err := os.Stat(backupFile)
+	if err != nil {
+		t.Fatalf("stat backup file: %v", err)
+	}
+	if info.Mode().Perm() != 0o600 {
+		t.Errorf("backup file permissions = %o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestSecureFile_FailsIfExists(t *testing.T) {
+	setTestProfileDirs(t)
+
+	// Create a person so the export has data
+	_, stderr, code := runCLI(t, "contact", "add", "--name", "Test User", "--email", "test@example.com")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+
+	exportFile := filepath.Join(t.TempDir(), "export.json")
+
+	// First export should succeed
+	_, stderr, code = runCLI(t, "export", "json", "--out", exportFile)
+	if code != 0 {
+		t.Fatalf("first export: code=%d stderr=%s", code, stderr)
+	}
+
+	// Second export to same path should fail (O_EXCL)
+	_, stderr, code = runCLI(t, "export", "json", "--out", exportFile)
+	if code == 0 {
+		t.Fatal("expected second export to same path to fail")
+	}
+}
+
+func TestBackupRestore_RefusesOverwriteWithoutForce(t *testing.T) {
+	setTestProfileDirs(t)
+
+	// Create a person and a backup
+	_, stderr, code := runCLI(t, "contact", "add", "--name", "Test User", "--email", "test@example.com")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+
+	backupFile := filepath.Join(t.TempDir(), "backup.enc")
+	_, stderr, code = runCLI(t, "backup", "create", "--out", backupFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("backup create: code=%d stderr=%s", code, stderr)
+	}
+
+	// Restore once to create the target
+	targetFile := filepath.Join(t.TempDir(), "restored.db")
+	_, stderr, code = runCLI(t, "backup", "restore", "--in", backupFile, "--target", targetFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("first restore: code=%d stderr=%s", code, stderr)
+	}
+
+	// Second restore without --force should fail
+	_, stderr, code = runCLI(t, "backup", "restore", "--in", backupFile, "--target", targetFile, "--passphrase", "test-passphrase")
+	if code == 0 {
+		t.Fatal("expected restore to existing target without --force to fail")
+	}
+	if !strings.Contains(stderr, "--force") {
+		t.Errorf("expected error to mention --force, got: %s", stderr)
+	}
+}
+
+func TestBackupRestore_ForceOverwritesExisting(t *testing.T) {
+	setTestProfileDirs(t)
+
+	// Create a person and a backup
+	_, stderr, code := runCLI(t, "contact", "add", "--name", "Test User", "--email", "test@example.com")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+
+	backupFile := filepath.Join(t.TempDir(), "backup.enc")
+	_, stderr, code = runCLI(t, "backup", "create", "--out", backupFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("backup create: code=%d stderr=%s", code, stderr)
+	}
+
+	// Restore once to create the target
+	targetFile := filepath.Join(t.TempDir(), "restored.db")
+	_, stderr, code = runCLI(t, "backup", "restore", "--in", backupFile, "--target", targetFile, "--passphrase", "test-passphrase")
+	if code != 0 {
+		t.Fatalf("first restore: code=%d stderr=%s", code, stderr)
+	}
+
+	// Restore again with --force should succeed
+	_, stderr, code = runCLI(t, "backup", "restore", "--in", backupFile, "--target", targetFile, "--passphrase", "test-passphrase", "--force")
+	if code != 0 {
+		t.Fatalf("restore with --force: code=%d stderr=%s", code, stderr)
+	}
+
+	// Verify target still exists
+	if _, err := os.Stat(targetFile); os.IsNotExist(err) {
+		t.Fatalf("target file should exist after --force restore: %s", targetFile)
+	}
+}
