@@ -23,6 +23,17 @@ import (
 // finish after ctx is cancelled before forcing the listener closed.
 const shutdownTimeout = 5 * time.Second
 
+// Server timeouts guard against slowloris-style attacks and clients that
+// hold connections open without completing a request. The console is
+// localhost-only, but any local process or browser tab can still abuse
+// unbounded timeouts.
+const (
+	readHeaderTimeout = 5 * time.Second
+	readTimeout       = 30 * time.Second
+	writeTimeout      = 60 * time.Second
+	idleTimeout       = 120 * time.Second
+)
+
 //go:embed static/*
 var staticFS embed.FS
 
@@ -51,7 +62,13 @@ func (s *Server) Handler() http.Handler {
 // Serve runs the console on ln until ctx is cancelled, then shuts down
 // gracefully. ln must be bound to 127.0.0.1 — see Listen.
 func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
-	httpServer := &http.Server{Handler: s.Handler()}
+	httpServer := &http.Server{
+		Handler:           s.Handler(),
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- httpServer.Serve(ln) }()
