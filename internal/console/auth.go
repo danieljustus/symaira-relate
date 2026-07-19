@@ -79,7 +79,10 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 					writeJSONError(w, http.StatusBadRequest, "invalid redirect target")
 					return
 				}
-				http.Redirect(w, r, redirectURL.RequestURI(), http.StatusFound)
+				// Redirect to the *validated* target (not the raw request
+				// URI), so the check above and the redirect below always
+				// operate on the same value.
+				http.Redirect(w, r, target.String(), http.StatusFound)
 				return
 			}
 		}
