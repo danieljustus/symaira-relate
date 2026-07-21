@@ -11,7 +11,7 @@ contract referenced by the beta acceptance criteria.
 `symrelate version --json` reports three independent numbers:
 
 ```json
-{"tool":"symrelate","version":"v0.1.0-beta.1","schema_version":5,"api_version":"v1"}
+{"tool":"symrelate","version":"v0.1.1-beta.1","schema_version":7,"api_version":"v1"}
 ```
 
 - `version` — the release tag, changes on every release.
