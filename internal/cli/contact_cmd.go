@@ -14,10 +14,11 @@ func init() {
 	Register(&Command{
 		Name:  "contact",
 		Short: "Manage people (add, show, list, update, delete)",
-		Long: `Manage contacts in the local database. Subcommands include add, show, list,
-update, delete, erase, tag, classify, and add-point.`,
+		Long: `Manage contacts in the local database. Subcommands include add, show, ref,
+list, update, delete, erase, tag, classify, and add-point.`,
 		Examples: `  symrelate contact add --name "Ada Lovelace" --email ada@example.com
   symrelate contact show <id>
+  symrelate contact ref <id>
   symrelate contact list --query "Ada"
   symrelate contact add-point --kind phone --value "+1 555 000 1111" <id>`,
 		Run: runContact,
@@ -26,7 +27,7 @@ update, delete, erase, tag, classify, and add-point.`,
 
 func runContact(ctx context.Context, iostreams IO, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: symrelate contact <add|show|list|update|delete|erase|tag|classify|add-point> ...")
+		return fmt.Errorf("usage: symrelate contact <add|show|ref|list|update|delete|erase|tag|classify|add-point> ...")
 	}
 	verb, rest := args[0], args[1:]
 
@@ -41,6 +42,8 @@ func runContact(ctx context.Context, iostreams IO, args []string) error {
 		return contactAdd(ctx, iostreams, a, rest)
 	case "show":
 		return contactShow(ctx, iostreams, a, rest)
+	case "ref":
+		return contactRef(ctx, iostreams, a, rest)
 	case "list":
 		return contactList(ctx, iostreams, a, rest)
 	case "update":
@@ -98,6 +101,28 @@ func contactShow(ctx context.Context, iostreams IO, a *app.App, args []string) e
 		return err
 	}
 	return printResult(iostreams, *human, p)
+}
+
+// contactRef is the reference-only lookup documented in
+// docs/integrations/CONTACT_REF.md: it resolves any contact ID (person or
+// organization) to the minimal, privacy-safe contact.Ref shape and never
+// prints contact points, notes, or other private fields — that is what
+// makes its output safe for external tools to store.
+func contactRef(ctx context.Context, iostreams IO, a *app.App, args []string) error {
+	fs := flag.NewFlagSet("contact ref", flag.ContinueOnError)
+	fs.SetOutput(iostreams.Stderr)
+	human := fs.Bool("human", false, "print a human-readable summary instead of JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return fmt.Errorf("usage: symrelate contact ref [--human] <id>")
+	}
+	ref, err := a.Contacts.GetRef(ctx, fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	return printResult(iostreams, *human, ref)
 }
 
 func contactList(ctx context.Context, iostreams IO, a *app.App, args []string) error {
