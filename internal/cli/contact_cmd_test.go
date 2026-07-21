@@ -132,3 +132,70 @@ func TestHumanFlag_IsReadableNotJSON(t *testing.T) {
 		t.Errorf("--human output missing expected fields: %s", out)
 	}
 }
+
+// TestContactRef_EndToEnd exercises the reference-only lookup documented in
+// docs/integrations/CONTACT_REF.md: JSON by default with the exact contract
+// key set, never any contact-point or notes data, a readable --human
+// variant, and a non-zero exit for unknown IDs.
+func TestContactRef_EndToEnd(t *testing.T) {
+	setTestProfileDirs(t)
+
+	out, stderr, code := runCLI(t, "contact", "add", "--name", "Ada Lovelace", "--email", "ada@example.com", "--notes", "private-ref-test-notes")
+	if code != 0 {
+		t.Fatalf("contact add: code=%d stderr=%s", code, stderr)
+	}
+	var person map[string]any
+	if err := json.Unmarshal([]byte(out), &person); err != nil {
+		t.Fatalf("contact add: invalid JSON: %v (%s)", err, out)
+	}
+	personID, _ := person["ID"].(string)
+	if personID == "" {
+		t.Fatalf("contact add: missing ID in %s", out)
+	}
+
+	out, stderr, code = runCLI(t, "contact", "ref", personID)
+	if code != 0 {
+		t.Fatalf("contact ref: code=%d stderr=%s", code, stderr)
+	}
+	var ref map[string]any
+	if err := json.Unmarshal([]byte(out), &ref); err != nil {
+		t.Fatalf("contact ref: invalid JSON: %v (%s)", err, out)
+	}
+	wantKeys := map[string]bool{"provider": true, "schema_version": true, "id": true, "kind": true, "display_name": true}
+	if len(ref) != len(wantKeys) {
+		t.Errorf("contact ref keys = %v, want exactly %v", ref, wantKeys)
+	}
+	for k := range ref {
+		if !wantKeys[k] {
+			t.Errorf("contact ref: unexpected key %q", k)
+		}
+	}
+	if ref["provider"] != "symrelate" || ref["id"] != personID || ref["kind"] != "person" || ref["display_name"] != "Ada Lovelace" {
+		t.Errorf("contact ref payload = %v", ref)
+	}
+	if strings.Contains(out, "ada@example.com") || strings.Contains(out, "private-ref-test-notes") {
+		t.Errorf("contact ref leaks private data: %s", out)
+	}
+
+	out, stderr, code = runCLI(t, "contact", "ref", "--human", personID)
+	if code != 0 {
+		t.Fatalf("contact ref --human: code=%d stderr=%s", code, stderr)
+	}
+	if err := json.Unmarshal([]byte(out), &map[string]any{}); err == nil {
+		t.Errorf("--human output looks like JSON, want a human-readable summary: %s", out)
+	}
+	if !strings.Contains(out, "Ada Lovelace") || strings.Contains(out, "ada@example.com") {
+		t.Errorf("--human output wrong: %s", out)
+	}
+
+	if _, _, code = runCLI(t, "contact", "ref", "does-not-exist"); code == 0 {
+		t.Fatal("contact ref with unknown id: expected non-zero exit")
+	}
+
+	if _, _, code = runCLI(t, "contact", "delete", personID); code != 0 {
+		t.Fatalf("contact delete: code=%d", code)
+	}
+	if _, _, code = runCLI(t, "contact", "ref", personID); code == 0 {
+		t.Fatal("contact ref after delete: expected non-zero exit")
+	}
+}

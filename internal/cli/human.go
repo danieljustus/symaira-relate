@@ -29,6 +29,8 @@ func humanize(v any) string {
 	switch x := v.(type) {
 	case *contact.Person:
 		return humanPerson(x)
+	case *contact.Ref:
+		return fmt.Sprintf("%s (%s) [ref %s:%s schema v%d]", x.DisplayName, x.Kind, x.Provider, x.ID, x.SchemaVersion)
 	case *contact.Organization:
 		return humanOrganization(x)
 	case *contact.ContactPoint:

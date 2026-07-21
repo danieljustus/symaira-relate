@@ -62,6 +62,15 @@ Every command that returns structured data supports two output modes:
 `--human` output has no compatibility guarantee — only JSON does. Do not
 parse `--human` output in scripts.
 
+## Published shapes
+
+Shapes published for external consumers have their own contract documents:
+
+- [integrations/CONTACT_REF.md](integrations/CONTACT_REF.md) — the
+  reference-only contact shape (`symrelate contact ref <id>`) external
+  tools may store and resolve without receiving contact-point data. Its
+  `schema_version` follows the additive-only rule above.
+
 ## Transport hygiene
 
 Diagnostics and progress output always go to **stderr**. **Stdout**
