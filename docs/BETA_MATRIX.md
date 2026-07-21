@@ -1,6 +1,6 @@
 # Beta manual QA matrix
 
-A manual verification checklist for `v0.1.0-beta.1`, covering the
+A manual verification checklist for `v0.1.1-beta.1`, covering the
 surfaces automated tests don't fully exercise end-to-end (a real
 terminal, a real browser, a machine without SymMemory/SymMeet
 installed). Run through this before tagging a release; record the
