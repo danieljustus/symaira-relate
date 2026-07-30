@@ -1,3 +1,5 @@
+github.com/danieljustus/symaira-corekit v0.7.0 h1:jg8DIors4yl/F4M+FsL670zbzIt+x6hTcd5sgUJSV8o=
+github.com/danieljustus/symaira-corekit v0.7.0/go.mod h1:45ccz9S14g649OsZyzfgLp77od3WImLRPHaeO414fng=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/emersion/go-vcard v0.0.0-20260618161152-d854b7e0e2d3 h1:B9YK+Tck5mTccyDhtxBzWyqGYcFxLyB6+noMNW4/VgI=
