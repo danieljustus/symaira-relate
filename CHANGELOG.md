@@ -4,7 +4,13 @@ All notable changes to `symrelate` are documented here. The format is
 loosely based on [Keep a Changelog](https://keepachangelog.com/); dates
 are omitted until the first tagged release.
 
-## [Unreleased] — working toward v0.1.1-beta.1
+## [Unreleased] — working toward v0.1.2-beta.1
+
+### Added
+
+- Update detection via `symrelate version --check`: checks GitHub for newer releases using `updatecheck` (corekit) — never blocking, errors silently swallowed (closes #60).
+
+## [v0.1.1-beta.1] - 2026-07-21
 
 ### Added
 

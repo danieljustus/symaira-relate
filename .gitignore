@@ -9,3 +9,5 @@
 .DS_Store
 *.local.yaml
 .omo/
+.worktrees/
+.github/audit/

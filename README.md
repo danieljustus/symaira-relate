@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/danieljustus/symaira-relate/actions/workflows/ci.yml/badge.svg)](https://github.com/danieljustus/symaira-relate/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/danieljustus/symaira-relate)](https://goreportcard.com/report/github.com/danieljustus/symaira-relate)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+![Symaira Relate social preview](docs/assets/social-preview.png)
 
 `symrelate` is a standalone, local-first contact and relationship manager.
 It stores people, organizations, relationships, interaction history and
@@ -11,7 +13,7 @@ cloud service, no network calls.
 
 ## Status
 
-Beta (`v0.1.1-beta.1`). The CLI surface and on-disk schema are pre-1.0 and
+Beta (`v0.1.2-beta.1`). The CLI surface and on-disk schema are pre-1.0 and
 may still change between beta releases.
 
 ## Install
