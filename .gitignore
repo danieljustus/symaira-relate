@@ -11,3 +11,7 @@
 .omo/
 .worktrees/
 .github/audit/
+coverage.out
+.github/coverage/
+.github/prerelease/
+.github/review/
