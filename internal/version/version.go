@@ -2,6 +2,8 @@
 // `symrelate version --json` and the doctor command.
 package version
 
+import "github.com/danieljustus/symaira-corekit/versionkit"
+
 // SchemaVersion is the highest embedded migration version this build knows
 // about. It is independent of the tool release version.
 const SchemaVersion = 7
@@ -21,14 +23,19 @@ var Version = "dev"
 // Tool is the stable machine-readable tool identifier.
 const Tool = "symrelate"
 
-// Info is the JSON-serializable payload for `version --json`.
+// Info is the `version --json` payload: the versionkit handshake fields
+// ({tool, version, schema_version} — the exact shape symaira-appkit's
+// SymairaToolKit validates against, see corekit/AGENTS.md) plus the repo's
+// own wire-contract version api_version (docs/CLI_CONTRACT.md). The embedded
+// versionkit.Info keeps the handshake field names untouched; api_version is
+// an additional contract field whose removal would require a v2 bump.
 type Info struct {
-	Tool          string `json:"tool"`
-	Version       string `json:"version"`
-	SchemaVersion int    `json:"schema_version"`
-	APIVersion    string `json:"api_version"`
+	versionkit.Info
+	APIVersion string `json:"api_version"`
 }
 
+// Get returns the `version --json` payload. The plain `version` output is
+// derived from the same payload.
 func Get() Info {
-	return Info{Tool: Tool, Version: Version, SchemaVersion: SchemaVersion, APIVersion: APIVersion}
+	return Info{Info: versionkit.New(Tool, Version, SchemaVersion), APIVersion: APIVersion}
 }

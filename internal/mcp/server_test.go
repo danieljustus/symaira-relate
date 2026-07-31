@@ -5,10 +5,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/danieljustus/symaira-corekit/mcpserver"
 	"github.com/danieljustus/symaira-relate/internal/app"
+	"github.com/danieljustus/symaira-relate/internal/domain/contact"
 )
 
 func testApp(t *testing.T) *app.App {
@@ -23,7 +26,8 @@ func testApp(t *testing.T) *app.App {
 
 // call sends one JSON-RPC request line through Server.Run and returns the
 // decoded response. Run is driven over an in-memory pipe so this exercises
-// the exact stdio framing symrelate mcp uses in production.
+// the exact stdio framing symrelate mcp uses in production (mcpserver
+// accepts newline-delimited JSON as well as Content-Length framing).
 func call(t *testing.T, s *Server, id int, method string, params any) map[string]any {
 	t.Helper()
 
@@ -36,10 +40,10 @@ func call(t *testing.T, s *Server, id int, method string, params any) map[string
 		t.Fatalf("marshal request: %v", err)
 	}
 
-	var stdout, stderr bytes.Buffer
+	var stdout bytes.Buffer
 	stdin := bytes.NewReader(append(reqLine, '\n'))
-	if err := s.Run(context.Background(), stdin, &stdout, &stderr); err != nil {
-		t.Fatalf("Run() error = %v (stderr=%s)", err, stderr.String())
+	if err := s.Run(context.Background(), stdin, &stdout); err != nil {
+		t.Fatalf("Run() error = %v", err)
 	}
 
 	var resp map[string]any
@@ -49,11 +53,33 @@ func call(t *testing.T, s *Server, id int, method string, params any) map[string
 	return resp
 }
 
+// toolTextJSON parses the text content block of a tool-call result into
+// its JSON value. mcpserver's tool-result envelope is
+// {content: [{type: "text", text}], isError}, where text carries the
+// compact JSON of the handler's return value.
+func toolTextJSON(t *testing.T, result map[string]any) any {
+	t.Helper()
+	content, _ := result["content"].([]any)
+	if len(content) != 1 {
+		t.Fatalf("expected one content block, got %v", result["content"])
+	}
+	block, _ := content[0].(map[string]any)
+	text, _ := block["text"].(string)
+	if text == "" {
+		t.Fatalf("expected non-empty text content in %v", result)
+	}
+	var v any
+	if err := json.Unmarshal([]byte(text), &v); err != nil {
+		t.Fatalf("text content is not valid JSON: %v (%s)", err, text)
+	}
+	return v
+}
+
 func TestServer_StdoutIsProtocolClean(t *testing.T) {
 	s := New(testApp(t))
-	var stdout, stderr bytes.Buffer
+	var stdout bytes.Buffer
 	stdin := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize"}` + "\n")
-	if err := s.Run(context.Background(), stdin, &stdout, &stderr); err != nil {
+	if err := s.Run(context.Background(), stdin, &stdout); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 
@@ -69,9 +95,6 @@ func TestServer_StdoutIsProtocolClean(t *testing.T) {
 	if lines != 1 {
 		t.Errorf("expected exactly 1 stdout line, got %d", lines)
 	}
-	if stderr.Len() == 0 {
-		t.Error("expected a diagnostic line on stderr")
-	}
 }
 
 func TestServer_Initialize(t *testing.T) {
@@ -80,8 +103,8 @@ func TestServer_Initialize(t *testing.T) {
 	if !ok {
 		t.Fatalf("missing result in %v", resp)
 	}
-	if result["protocolVersion"] != ProtocolVersion {
-		t.Errorf("protocolVersion = %v, want %v", result["protocolVersion"], ProtocolVersion)
+	if result["protocolVersion"] != mcpserver.ProtocolVersion {
+		t.Errorf("protocolVersion = %v, want %v", result["protocolVersion"], mcpserver.ProtocolVersion)
 	}
 	serverInfo, _ := result["serverInfo"].(map[string]any)
 	if serverInfo["name"] != "symrelate" {
@@ -137,10 +160,7 @@ func TestServer_ToolsCall_ContactCreateAndGet(t *testing.T) {
 	if createResult["isError"] != false {
 		t.Fatalf("contact_create reported an error: %v", createResult)
 	}
-	structured, ok := createResult["structuredContent"].(map[string]any)
-	if !ok {
-		t.Fatalf("missing structuredContent in %v", createResult)
-	}
+	structured := toolTextJSON(t, createResult).(map[string]any)
 	id, _ := structured["ID"].(string)
 	if id == "" {
 		t.Fatalf("created contact missing ID: %v", structured)
@@ -151,7 +171,7 @@ func TestServer_ToolsCall_ContactCreateAndGet(t *testing.T) {
 		"arguments": map[string]any{"id": id},
 	})
 	getResult := getResp["result"].(map[string]any)
-	got := getResult["structuredContent"].(map[string]any)
+	got := toolTextJSON(t, getResult).(map[string]any)
 	if got["DisplayName"] != "Ada Lovelace" {
 		t.Errorf("DisplayName = %v, want Ada Lovelace", got["DisplayName"])
 	}
@@ -159,18 +179,18 @@ func TestServer_ToolsCall_ContactCreateAndGet(t *testing.T) {
 
 // An unknown tool name is a protocol-level mistake by the caller (it can
 // never succeed by retrying with different arguments), so it is reported
-// as a JSON-RPC error — unlike a valid tool that fails during execution
-// (not-found, validation, ...), which is reported in-band via isError so
-// a client can distinguish "the tool ran and failed" from "the call
-// itself was invalid".
+// as a JSON-RPC error (CodeMethodNotFound, per corekit/mcpserver) — unlike
+// a valid tool that fails during execution (not-found, validation, ...),
+// which is reported in-band via isError so a client can distinguish "the
+// tool ran and failed" from "the call itself was invalid".
 func TestServer_ToolsCall_UnknownTool_IsRPCError(t *testing.T) {
 	resp := call(t, New(testApp(t)), 1, "tools/call", map[string]any{"name": "does_not_exist", "arguments": map[string]any{}})
 	errObj, ok := resp["error"].(map[string]any)
 	if !ok {
 		t.Fatalf("expected an RPC error for an unknown tool, got %v", resp)
 	}
-	if code, _ := errObj["code"].(float64); int(code) != codeInvalidParams {
-		t.Errorf("code = %v, want %d", errObj["code"], codeInvalidParams)
+	if code, _ := errObj["code"].(float64); int(code) != mcpserver.CodeMethodNotFound {
+		t.Errorf("code = %v, want %d", errObj["code"], mcpserver.CodeMethodNotFound)
 	}
 }
 
@@ -191,16 +211,16 @@ func TestServer_UnknownMethod(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected an error response, got %v", resp)
 	}
-	if code, _ := errObj["code"].(float64); int(code) != codeMethodNotFound {
-		t.Errorf("code = %v, want %d", errObj["code"], codeMethodNotFound)
+	if code, _ := errObj["code"].(float64); int(code) != mcpserver.CodeMethodNotFound {
+		t.Errorf("code = %v, want %d", errObj["code"], mcpserver.CodeMethodNotFound)
 	}
 }
 
 func TestServer_MalformedJSON_ReturnsParseError_NotCrash(t *testing.T) {
 	s := New(testApp(t))
-	var stdout, stderr bytes.Buffer
+	var stdout bytes.Buffer
 	stdin := strings.NewReader("{not json\n")
-	if err := s.Run(context.Background(), stdin, &stdout, &stderr); err != nil {
+	if err := s.Run(context.Background(), stdin, &stdout); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 	var resp map[string]any
@@ -211,18 +231,20 @@ func TestServer_MalformedJSON_ReturnsParseError_NotCrash(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected a parse error response, got %v", resp)
 	}
-	if code, _ := errObj["code"].(float64); int(code) != codeParseError {
-		t.Errorf("code = %v, want %d", errObj["code"], codeParseError)
+	if code, _ := errObj["code"].(float64); int(code) != mcpserver.CodeParseError {
+		t.Errorf("code = %v, want %d", errObj["code"], mcpserver.CodeParseError)
 	}
 }
 
 func TestServer_Notification_GetsNoResponse(t *testing.T) {
 	s := New(testApp(t))
-	var stdout, stderr bytes.Buffer
+	var stdout bytes.Buffer
 	// No "id" field: this is a notification per JSON-RPC 2.0 and must not
-	// produce a response line.
-	stdin := strings.NewReader(`{"jsonrpc":"2.0","method":"ping"}` + "\n")
-	if err := s.Run(context.Background(), stdin, &stdout, &stderr); err != nil {
+	// produce a response line. notifications/initialized is the MCP
+	// lifecycle notification clients actually send; mcpserver acknowledges
+	// it silently.
+	stdin := strings.NewReader(`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n")
+	if err := s.Run(context.Background(), stdin, &stdout); err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
 	if stdout.Len() != 0 {
@@ -241,5 +263,59 @@ func TestServer_UnknownFieldInArguments_IsRejected(t *testing.T) {
 	}
 	if result["isError"] != true {
 		t.Errorf("expected isError=true for an unknown argument field, got %v", result)
+	}
+}
+
+// Regression net over the full 8-tool catalog: every tool must answer a
+// minimal valid call with isError=false and a JSON-parseable text payload
+// over the corekit transport.
+func TestServer_ToolsCall_CatalogRegression(t *testing.T) {
+	ctx := context.Background()
+	a := testApp(t)
+	s := New(a)
+
+	person, err := a.Contacts.CreatePerson(ctx, contact.PersonInput{DisplayName: "Grace Hopper"})
+	if err != nil {
+		t.Fatalf("seed person: %v", err)
+	}
+	org, err := a.Contacts.CreateOrganization(ctx, contact.OrganizationInput{Name: "ACME"})
+	if err != nil {
+		t.Fatalf("seed org: %v", err)
+	}
+
+	toolOK := func(name string, args map[string]any) {
+		t.Helper()
+		resp := call(t, s, 1, "tools/call", map[string]any{"name": name, "arguments": args})
+		result, ok := resp["result"].(map[string]any)
+		if !ok {
+			t.Fatalf("%s: expected a result envelope, got %v", name, resp)
+		}
+		if result["isError"] != false {
+			t.Fatalf("%s: unexpected isError=true: %v", name, result)
+		}
+		toolTextJSON(t, result) // text block must be parseable JSON
+	}
+
+	toolOK("contact_search", map[string]any{"query": "Grace"})
+	toolOK("contact_get", map[string]any{"id": person.ID})
+	toolOK("contact_create", map[string]any{"display_name": "Katherine Johnson"})
+	toolOK("contact_update", map[string]any{"id": person.ID, "display_name": "Grace B. Hopper"})
+	toolOK("organization_search", map[string]any{"query": ""})
+	toolOK("organization_get", map[string]any{"id": org.ID})
+	toolOK("followup_list", map[string]any{"person_id": person.ID})
+	toolOK("timeline_get", map[string]any{"person_id": person.ID})
+}
+
+// The PII boundary must hold on the wire: an error message carrying a
+// contact-point value is masked by redactErr before mcpserver can put it
+// into the client-visible text block.
+func TestRedactErr_MasksContactPoints(t *testing.T) {
+	err := redactErr(fmt.Errorf("duplicate contact point ada@example.com (+49 170 1234567) rejected"))
+	msg := err.Error()
+	if strings.Contains(msg, "ada@example.com") {
+		t.Errorf("error message reaches client unredacted: %q", msg)
+	}
+	if strings.Contains(msg, "170 1234567") {
+		t.Errorf("error message reaches client unredacted: %q", msg)
 	}
 }

@@ -5,7 +5,12 @@ import (
 	"testing"
 )
 
-func TestInfo_JSONUsesSnakeCase(t *testing.T) {
+// The version --json payload carries the versionkit handshake contract
+// {tool, version, schema_version} (corekit/AGENTS.md — field names must not
+// be renamed) plus the repo's own api_version wire-contract field
+// (docs/CLI_CONTRACT.md). Additional fields do not break the handshake:
+// SymairaToolKit reads the known field names and ignores everything else.
+func TestInfo_JSONMatchesVersionkitHandshake(t *testing.T) {
 	b, err := json.Marshal(Get())
 	if err != nil {
 		t.Fatalf("Marshal() error = %v", err)
