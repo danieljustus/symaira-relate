@@ -1,5 +1,7 @@
 # Symaira Relate
 
+*Local-first contact and relationship manager — CLI, web console and MCP server over one encrypted-at-rest-aware SQLite vault on your machine.*
+
 [![CI](https://github.com/danieljustus/symaira-relate/actions/workflows/ci.yml/badge.svg)](https://github.com/danieljustus/symaira-relate/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/danieljustus/symaira-relate)](https://goreportcard.com/report/github.com/danieljustus/symaira-relate)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -10,6 +12,26 @@
 It stores people, organizations, relationships, interaction history and
 follow-ups in a single SQLite database on your machine — no account, no
 cloud service, no network calls.
+
+## Why Symaira Relate
+
+- **Local-first by design** — your contacts live in one SQLite file on your
+  machine; there is no cloud account to sign up for and nothing leaves the
+  device unless you back it up yourself.
+- **Privacy by default** — contact points never appear in logs, errors or
+  diagnostics, backups are AES-256-GCM encrypted, and erasing a contact is a
+  hard delete with an audit trail.
+- **Agent-ready** — a deliberately narrow MCP server over stdio exposes the
+  safe read/write surface to AI clients without widening the attack area.
+- **Stable JSON contract** — every command prints versioned, snake_case JSON
+  (`api_version: v1`) so scripts and agents can rely on the output shape.
+- **Standalone-first** — builds and runs with zero other Symaira tools;
+  optional integrations are detected at runtime and degrade gracefully.
+
+```console
+$ symrelate contact add --display-name "Ada Lovelace" --email ada@example.com
+{"id":"01J...","display_name":"Ada Lovelace",...}
+```
 
 ## Status
 
