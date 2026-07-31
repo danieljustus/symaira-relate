@@ -16,8 +16,9 @@ func init() {
 }
 
 // runMCP serves MCP tool calls over stdin/stdout until EOF. Stdout carries
-// JSON-RPC frames only; all diagnostics go to Stderr — the same protocol
-// hygiene internal/cli.IO already documents for the CLI's own --json mode.
+// JSON-RPC frames only; all diagnostics go to stderr via corekit/mcpserver
+// (log/slog) — the same protocol hygiene internal/cli.IO already documents
+// for the CLI's own --json mode.
 func runMCP(ctx context.Context, iostreams IO, args []string) error {
 	a, err := app.Open(ctx)
 	if err != nil {
@@ -25,5 +26,5 @@ func runMCP(ctx context.Context, iostreams IO, args []string) error {
 	}
 	defer a.Close()
 
-	return mcp.New(a).Run(ctx, iostreams.Stdin, iostreams.Stdout, iostreams.Stderr)
+	return mcp.New(a).Run(ctx, iostreams.Stdin, iostreams.Stdout)
 }

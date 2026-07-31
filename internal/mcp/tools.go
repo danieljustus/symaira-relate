@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 
+	"github.com/danieljustus/symaira-corekit/mcpserver"
 	"github.com/danieljustus/symaira-relate/internal/app"
 	"github.com/danieljustus/symaira-relate/internal/domain/contact"
 	"github.com/danieljustus/symaira-relate/internal/domain/page"
@@ -23,7 +25,12 @@ type tool struct {
 	handler     func(ctx context.Context, a *app.App, args json.RawMessage) (any, error)
 }
 
-func registerTools(s *Server) {
+// registerTools registers the reviewed 8-tool catalog on the corekit MCP
+// server. Registration order is the tools/list order (alphabetical).
+// Handler errors are mapped through redactErr before they can reach a
+// client — mcpserver reports them in-band (isError: true), so the PII
+// boundary lives here, exactly where the old errorToResponse path kept it.
+func (s *Server) registerTools() {
 	for _, t := range []tool{
 		contactSearchTool(),
 		contactGetTool(),
@@ -34,80 +41,32 @@ func registerTools(s *Server) {
 		followUpListTool(),
 		timelineGetTool(),
 	} {
-		s.tools[t.name] = t
-	}
-}
-
-func (s *Server) handleToolsList() any {
-	names := make([]string, 0, len(s.tools))
-	for name := range s.tools {
-		names = append(names, name)
-	}
-	sortStrings(names)
-
-	list := make([]map[string]any, 0, len(names))
-	for _, name := range names {
-		t := s.tools[name]
-		list = append(list, map[string]any{
-			"name":        t.name,
-			"description": t.description,
-			"inputSchema": t.inputSchema,
+		schema, err := json.Marshal(t.inputSchema)
+		if err != nil {
+			panic("mcp: marshal input schema for " + t.name + ": " + err.Error())
+		}
+		s.srv.RegisterTool(&mcpserver.Tool{
+			Name:        t.name,
+			Description: t.description,
+			InputSchema: schema,
+			Handler: func(ctx context.Context, input json.RawMessage) (any, error) {
+				result, err := t.handler(ctx, s.app, input)
+				if err != nil {
+					return nil, redactErr(err)
+				}
+				return result, nil
+			},
 		})
 	}
-	return map[string]any{"tools": list}
 }
 
-func sortStrings(s []string) {
-	for i := 1; i < len(s); i++ {
-		for j := i; j > 0 && s[j-1] > s[j]; j-- {
-			s[j-1], s[j] = s[j], s[j-1]
-		}
-	}
-}
-
-type toolCallParams struct {
-	Name      string          `json:"name"`
-	Arguments json.RawMessage `json:"arguments"`
-}
-
-func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (any, error) {
-	var p toolCallParams
-	if err := json.Unmarshal(params, &p); err != nil {
-		return nil, errs.Invalid("mcp.tools/call", "invalid params: expected {name, arguments}", err)
-	}
-	t, ok := s.tools[p.Name]
-	if !ok {
-		return nil, errs.Invalid("mcp.tools/call", "unknown tool: "+p.Name, nil)
-	}
-
-	result, err := t.handler(ctx, s.app, p.Arguments)
-	if err != nil {
-		return toolCallResult(nil, err), nil // tool-call errors are reported in-band, not as an RPC error
-	}
-	return toolCallResult(result, nil), nil
-}
-
-// toolCallResult wraps a tool's return value in the MCP tool-call result
-// shape: a text content block (for clients that only render text) plus
-// structuredContent carrying the same value as real JSON (for clients
-// that parse it directly), matching the CLI's JSON contract 1:1 — see
-// docs/MCP.md.
-func toolCallResult(result any, callErr error) map[string]any {
-	if callErr != nil {
-		return map[string]any{
-			"isError": true,
-			"content": []map[string]any{{
-				"type": "text",
-				"text": redactedMessage(callErr),
-			}},
-		}
-	}
-	text, _ := json.MarshalIndent(result, "", "  ")
-	return map[string]any{
-		"isError":           false,
-		"content":           []map[string]any{{"type": "text", "text": string(text)}},
-		"structuredContent": result,
-	}
+// redactErr maps a handler error to its client-visible form. Every error
+// message that can reach an MCP client passes through security.Redact
+// (see docs/PRIVACY.md), so a contact-point value that reached an error
+// path — a duplicate email in a conflict error, for example — can never
+// leak through the transport.
+func redactErr(err error) error {
+	return errors.New(security.Redact(err.Error()))
 }
 
 // -- contact_search ------------------------------------------------------
@@ -381,13 +340,4 @@ func stringProp(description string) map[string]any {
 
 func intProp(description string) map[string]any {
 	return map[string]any{"type": "integer", "description": description}
-}
-
-// redactedMessage renders a tool-call error's text content block. Tool-call
-// errors are reported in-band (isError: true) rather than as an RPC error
-// so a client can distinguish "the tool ran and reported failure" from
-// "the transport itself failed" — the message is still redacted, exactly
-// like the RPC error path in errorToResponse.
-func redactedMessage(err error) string {
-	return security.Redact(err.Error())
 }

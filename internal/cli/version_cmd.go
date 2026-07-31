@@ -29,6 +29,8 @@ func runVersion(ctx context.Context, iostreams IO, args []string) error {
 
 	info := version.Get()
 	if *jsonOut {
+		// Emits the versionkit handshake payload {tool, version,
+		// schema_version} plus api_version (docs/CLI_CONTRACT.md).
 		return json.NewEncoder(iostreams.Stdout).Encode(info)
 	}
 	fmt.Fprintf(iostreams.Stdout, "%s %s (schema %d)\n", info.Tool, info.Version, info.SchemaVersion)
