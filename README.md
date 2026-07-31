@@ -13,7 +13,7 @@ cloud service, no network calls.
 
 ## Status
 
-Beta (`v0.1.2-beta.1`). The CLI surface and on-disk schema are pre-1.0 and
+Beta (`v0.2.0-beta.1`). The CLI surface and on-disk schema are pre-1.0 and
 may still change between beta releases.
 
 ## Install
