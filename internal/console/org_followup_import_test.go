@@ -13,12 +13,18 @@ import (
 	"time"
 )
 
+func newTestHTTPServer(t *testing.T) (*httptest.Server, string) {
+	t.Helper()
+	s, token := testServer(t)
+	srv := httptest.NewServer(s.Handler())
+	t.Cleanup(srv.Close)
+	return srv, token
+}
+
 // -- organizations -------------------------------------------------------
 
 func TestOrganizationsLifecycle_ListCreateGetUpdateErase(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	// Empty list first.
 	resp, listed := doJSON(t, srv, token, http.MethodGet, "/api/v1/organizations", nil)
@@ -59,9 +65,7 @@ func TestOrganizationsLifecycle_ListCreateGetUpdateErase(t *testing.T) {
 }
 
 func TestOrganizationCreate_RejectsEmptyName(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, body := doJSON(t, srv, token, http.MethodPost, "/api/v1/organizations", map[string]any{"name": "  "})
 	if resp.StatusCode != http.StatusBadRequest {
@@ -70,9 +74,7 @@ func TestOrganizationCreate_RejectsEmptyName(t *testing.T) {
 }
 
 func TestOrganizationErase_UnknownID_IsNotFound(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, _ := doJSON(t, srv, token, http.MethodDelete, "/api/v1/organizations/does-not-exist", nil)
 	if resp.StatusCode != http.StatusNotFound {
@@ -81,9 +83,7 @@ func TestOrganizationErase_UnknownID_IsNotFound(t *testing.T) {
 }
 
 func TestOrganizationTimelineAndMemberships(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, created := doJSON(t, srv, token, http.MethodPost, "/api/v1/organizations", map[string]any{"name": "Acme"})
 	if resp.StatusCode != http.StatusCreated {
@@ -133,9 +133,7 @@ func TestOrganizationTimelineAndMemberships(t *testing.T) {
 }
 
 func TestMembershipCreate_RequiresBothIDs(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, body := doJSON(t, srv, token, http.MethodPost, "/api/v1/memberships", map[string]any{"person_id": "x"})
 	if resp.StatusCode != http.StatusBadRequest {
@@ -144,9 +142,7 @@ func TestMembershipCreate_RequiresBothIDs(t *testing.T) {
 }
 
 func TestMembershipCreate_UnknownEntity_IsBadRequest(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, _ := doJSON(t, srv, token, http.MethodPost, "/api/v1/memberships", map[string]any{
 		"person_id": "does-not-exist", "organization_id": "also-missing",
@@ -159,9 +155,7 @@ func TestMembershipCreate_UnknownEntity_IsBadRequest(t *testing.T) {
 // -- follow-ups ----------------------------------------------------------
 
 func TestContactTimelineAndMemberships(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, person := doJSON(t, srv, token, http.MethodPost, "/api/v1/contacts", map[string]any{"display_name": "Ada Lovelace"})
 	if resp.StatusCode != http.StatusCreated {
@@ -217,9 +211,7 @@ func TestContactTimelineAndMemberships(t *testing.T) {
 }
 
 func TestFollowUpsLifecycle_CreateListCompleteCancel(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, org := doJSON(t, srv, token, http.MethodPost, "/api/v1/organizations", map[string]any{"name": "Acme"})
 	if resp.StatusCode != http.StatusCreated {
@@ -275,9 +267,7 @@ func TestFollowUpsLifecycle_CreateListCompleteCancel(t *testing.T) {
 }
 
 func TestFollowUpsList_RequiresExactlyOneEntity(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	// Neither person_id nor organization_id.
 	resp, body := doJSON(t, srv, token, http.MethodGet, "/api/v1/followups", nil)
@@ -292,9 +282,7 @@ func TestFollowUpsList_RequiresExactlyOneEntity(t *testing.T) {
 }
 
 func TestFollowUpCreate_RejectsMissingDueDate(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, org := doJSON(t, srv, token, http.MethodPost, "/api/v1/organizations", map[string]any{"name": "Acme"})
 	orgID, _ := org["ID"].(string)
@@ -308,9 +296,7 @@ func TestFollowUpCreate_RejectsMissingDueDate(t *testing.T) {
 }
 
 func TestFollowUpCreate_UnknownOrganization_IsBadRequest(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	dueAt := time.Now().Add(24 * time.Hour).UTC().Format(time.RFC3339)
 	resp, _ := doJSON(t, srv, token, http.MethodPost, "/api/v1/followups", map[string]any{
@@ -404,9 +390,7 @@ func TestServe_ServesRequestsUntilCancelled(t *testing.T) {
 	}
 }
 func TestImportPlan_VCard(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	vcardPath := writeTempFile(t, "contact.vcf", importVCard)
 
@@ -423,9 +407,7 @@ func TestImportPlan_VCard(t *testing.T) {
 }
 
 func TestImportPlan_CSVWithDetectedMapping(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	csvPath := writeTempFile(t, "contacts.csv", "name,email\nJane Doe,jane@example.com\n")
 
@@ -442,9 +424,7 @@ func TestImportPlan_CSVWithDetectedMapping(t *testing.T) {
 }
 
 func TestImportPlan_CSVWithExplicitMapping(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	csvPath := writeTempFile(t, "contacts.csv", "Full Name,Email Address\nJohn Roe,john@example.com\n")
 
@@ -464,9 +444,7 @@ func TestImportPlan_CSVWithExplicitMapping(t *testing.T) {
 }
 
 func TestImportPlan_InvalidKind_IsBadRequest(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, body := doJSON(t, srv, token, http.MethodPost, "/api/v1/import/plan", map[string]any{
 		"path": "/nonexistent/file", "kind": "xml",
@@ -477,9 +455,7 @@ func TestImportPlan_InvalidKind_IsBadRequest(t *testing.T) {
 }
 
 func TestImportPlan_MissingFile_IsBadRequest(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	resp, body := doJSON(t, srv, token, http.MethodPost, "/api/v1/import/plan", map[string]any{
 		"path": filepath.Join(t.TempDir(), "missing.vcf"), "kind": "vcard",
@@ -490,9 +466,7 @@ func TestImportPlan_MissingFile_IsBadRequest(t *testing.T) {
 }
 
 func TestImportPlan_EmptyCSV_IsBadRequest(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	csvPath := writeTempFile(t, "empty.csv", "")
 	resp, body := doJSON(t, srv, token, http.MethodPost, "/api/v1/import/plan", map[string]any{
@@ -504,9 +478,7 @@ func TestImportPlan_EmptyCSV_IsBadRequest(t *testing.T) {
 }
 
 func TestImportApply_VCardCreatesContact(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	vcardPath := writeTempFile(t, "contact.vcf", importVCard)
 
@@ -546,9 +518,7 @@ func TestImportApply_VCardCreatesContact(t *testing.T) {
 }
 
 func TestImportApply_DuplicateResolution(t *testing.T) {
-	s, token := testServer(t)
-	srv := httptest.NewServer(s.Handler())
-	defer srv.Close()
+	srv, token := newTestHTTPServer(t)
 
 	// Import the same vCard twice; the second plan must flag the source
 	// as an exact re-match.

@@ -2,6 +2,8 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,6 +95,47 @@ func TestMigrate_IsIdempotentOnUpgrade(t *testing.T) {
 	}
 	if value != "1" {
 		t.Errorf("probe value = %q, want 1", value)
+	}
+}
+
+func TestWithTx_CommitsAndRollsBack(t *testing.T) {
+	ctx := context.Background()
+	db, err := OpenMemory(ctx)
+	if err != nil {
+		t.Fatalf("OpenMemory() error = %v", err)
+	}
+	defer db.Close()
+
+	if err := WithTx(ctx, db, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, "INSERT INTO settings (key, value) VALUES ('tx-commit', 'saved')")
+		return err
+	}); err != nil {
+		t.Fatalf("committing transaction error = %v", err)
+	}
+
+	var value string
+	if err := db.QueryRowContext(ctx, "SELECT value FROM settings WHERE key = 'tx-commit'").Scan(&value); err != nil {
+		t.Fatalf("committed row query error = %v", err)
+	}
+	if value != "saved" {
+		t.Fatalf("committed value = %q, want saved", value)
+	}
+
+	rollbackErr := errors.New("abort transaction")
+	if err := WithTx(ctx, db, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, "INSERT INTO settings (key, value) VALUES ('tx-rollback', 'discarded')"); err != nil {
+			return err
+		}
+		return rollbackErr
+	}); !errors.Is(err, rollbackErr) {
+		t.Fatalf("rollback error = %v, want %v", err, rollbackErr)
+	}
+	var count int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM settings WHERE key = 'tx-rollback'").Scan(&count); err != nil {
+		t.Fatalf("rolled-back row query error = %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("rolled-back row count = %d, want 0", count)
 	}
 }
 
