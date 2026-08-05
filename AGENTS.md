@@ -1,6 +1,6 @@
 # symaira-relate — Agent Instructions
 
-Contact & relationship manager. `symrelate` = CLI + localhost web console + stdio MCP server over a single encrypted-at-rest-aware SQLite vault. Beta maturity (`v0.1.1-beta.1`): API/schema may change.
+Contact & relationship manager. `symrelate` = CLI + localhost web console + stdio MCP server over a single encrypted-at-rest-aware SQLite vault. Beta maturity (`v0.2.0-beta.1`): API/schema may change.
 
 ## Commands
 
@@ -21,7 +21,7 @@ Entry point: `cmd/symrelate/main.go` (17 lines, no logic). Release workflow is h
 internal/
   app/         # service container (app.go + wire.go) — THE single boundary; CLI/MCP/console all go through app.App
   cli/         # 18 command files; custom dispatcher, commands self-register via init() → cli.Register()
-  mcp/         # stdio JSON-RPC 2.0 server (protocol 2024-11-05)
+  mcp/         # narrow 8-tool catalog over the corekit/mcpserver stdio transport (protocol 2024-11-05)
   console/     # localhost HTTP console, token auth; static/ = vanilla HTML/CSS/JS SPA via //go:embed (no npm, no build step)
   domain/      # pure types: contact, relationship, security, importer, page, memorylink — zero I/O
   service/     # contact / relationship / security / importer / memorylink services
@@ -55,7 +55,7 @@ internal/
 - Do NOT add GoReleaser — hand-rolled release workflow is intentional.
 - Do NOT add a config file format — env vars + flags only (as of beta).
 - Do NOT print diagnostics to stdout in MCP or CLI JSON mode (zero-pollution rule).
-- Do NOT import sibling Symaira repos at compile time — runtime discovery via `exec.LookPath` with graceful fallback (`internal/integration/`).
+- Do NOT import sibling Symaira repos at compile time — runtime discovery via `exec.LookPath` with graceful fallback (`internal/integration/`). Sole exception: the MCP transport depends on the versioned `github.com/danieljustus/symaira-corekit` module (`mcpserver`), pinned in `go.mod` without a `replace` directive; everything else stays runtime-discovered.
 
 ## Docs
 
