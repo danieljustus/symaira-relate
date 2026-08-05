@@ -4,11 +4,34 @@ All notable changes to `symrelate` are documented here. The format is
 loosely based on [Keep a Changelog](https://keepachangelog.com/); dates
 are omitted until the first tagged release.
 
-## [Unreleased] — working toward v0.1.2-beta.1
+## [Unreleased]
+
+## [v0.2.1-beta.1] - 2026-08-05
+
+### Fixed
+
+- Make quick-add atomic: creating a person and adding optional email/phone
+  contact points now commits or rolls back as one transaction, preventing
+  half-created people after a contact-point failure (closes #68).
+
+### Changed
+
+- Update `modernc.org/sqlite` to v1.55.0.
+
+## [v0.2.0-beta.1] - 2026-07-31
 
 ### Added
 
-- Update detection via `symrelate version --check`: checks GitHub for newer releases using `updatecheck` (corekit) — never blocking, errors silently swallowed (closes #60).
+- Replace the hand-written MCP JSON-RPC transport with the shared
+  `corekit/mcpserver` transport and add the ecosystem versionkit handshake.
+
+## [v0.1.2-beta.1] - 2026-07-30
+
+### Added
+
+- Update detection via `symrelate version --check`: checks GitHub for newer
+  releases using `updatecheck` (corekit), never blocks, and swallows errors
+  silently (closes #60).
 
 ## [v0.1.1-beta.1] - 2026-07-21
 

@@ -1,25 +1,30 @@
-# Release Notes - v0.2.0-beta.1
+# Release Notes - v0.2.1-beta.1
 
 `symrelate` is a local-first, standalone contact and relationship manager. It serves as the authoritative repository for raw contact points (names, emails, phones, addresses) and the relationships built on top of them, operating entirely offline without any external service dependency.
 
-This release replaces the hand-written JSON-RPC transport with the shared `corekit/mcpserver` stack and adds the versionkit handshake payload, aligning symrelate with the rest of the Symaira ecosystem.
+This release makes the quick-add contact path transactional and updates the
+SQLite driver dependency. It also includes the expanded automated coverage
+that exercises the CLI, console, service, domain, and application lifecycle
+surfaces.
 
 ## Resolved Issues
 
 This release resolves the following issues:
-- [#62](https://github.com/danieljustus/symaira-relate/issues/62): Replace the hand-written JSON-RPC stack with corekit/mcpserver and wire up the base packages
-- [#61](https://github.com/danieljustus/symaira-relate/issues/61): Add `version --check` update detection (shipped in v0.1.2-beta.1)
+- [#68](https://github.com/danieljustus/symaira-relate/issues/68): Make quick-add atomic so failed contact-point writes do not leave phantom people
+- [#65](https://github.com/danieljustus/symaira-relate/issues/65): Cover the organization-side service surface
+- [#66](https://github.com/danieljustus/symaira-relate/issues/66): Cover organization, follow-up, membership, and import console handlers
+- [#67](https://github.com/danieljustus/symaira-relate/issues/67): Cover CLI command groups and human-readable formatters
 
-## Major Features
+## Changes
 
-- **MCP transport via corekit/mcpserver**: The own JSON-RPC 2.0 stack in `internal/mcp/` (framing, validation, error codes, initialize handshake, zero-stdio-pollution rule) is replaced by the shared `corekit/mcpserver` transport — the same stack the sibling Symaira tools use. The 8-tool catalog and its PII-redaction boundary are unchanged. Requires corekit v0.8.0.
-- **Versionkit handshake**: `symrelate version --json` now emits the ecosystem-standard `{tool, version, schema_version}` payload (plus the existing `api_version` contract field), so GUI clients using SymairaToolKit can recognize this tool.
-- **Update detection (v0.1.2-beta.1)**: `symrelate version --check` checks GitHub for newer releases via corekit/updatecheck.
+- **Atomic quick-add**: `contact add`, MCP `contact_create`, and the web-console quick-add path now create the person and optional contact points in one transaction. Failed writes roll back the entire operation.
+- **SQLite update**: The embedded `modernc.org/sqlite` dependency is updated to v1.55.0.
+- **Coverage improvements**: Added integration and unit coverage for organization services, console handlers, CLI command groups, formatters, domain validation, SQLite transactions, and application lifecycle behavior.
 
 ## Verified Environments
 
 - **OS**: macOS, Linux, Windows
-- **Go Version**: 1.22+
+- **Go Version**: 1.26.5+
 - **Database Schema Version**: 7 (automatically migrated on start)
 
 ## Intentional Exclusions & Known Limitations

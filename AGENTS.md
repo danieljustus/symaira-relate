@@ -1,6 +1,6 @@
 # symaira-relate — Agent Instructions
 
-Contact & relationship manager. `symrelate` = CLI + localhost web console + stdio MCP server over a single encrypted-at-rest-aware SQLite vault. Beta maturity (`v0.2.0-beta.1`): API/schema may change.
+Contact & relationship manager. `symrelate` = CLI + localhost web console + stdio MCP server over a single encrypted-at-rest-aware SQLite vault. Beta maturity (`v0.2.1-beta.1`): API/schema may change.
 
 ## Commands
 

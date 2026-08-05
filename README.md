@@ -35,7 +35,7 @@ $ symrelate contact add --display-name "Ada Lovelace" --email ada@example.com
 
 ## Status
 
-Beta (`v0.2.0-beta.1`). The CLI surface and on-disk schema are pre-1.0 and
+Beta (`v0.2.1-beta.1`). The CLI surface and on-disk schema are pre-1.0 and
 may still change between beta releases.
 
 ## Install
