@@ -35,6 +35,15 @@ func (f *testFixture) person(t *testing.T, name string) string {
 	return p.ID
 }
 
+func (f *testFixture) org(t *testing.T, name string) string {
+	t.Helper()
+	o, err := f.contacts.CreateOrganization(context.Background(), contactdomain.OrganizationInput{Name: name})
+	if err != nil {
+		t.Fatalf("CreateOrganization(%s) error = %v", name, err)
+	}
+	return o.ID
+}
+
 func TestLinkPerson_GetUnlink_RoundTrip(t *testing.T) {
 	f := newFixture(t)
 	ctx := context.Background()
