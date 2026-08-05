@@ -19,17 +19,26 @@ func (s *Service) CreatePerson(ctx context.Context, in contact.PersonInput) (*co
 		return nil, errs.Invalid(op, "display name must not be empty", nil)
 	}
 
+	id, err := insertPerson(ctx, s.db, in)
+	if err != nil {
+		return nil, errs.Internal(op, "failed to insert person", err)
+	}
+	return s.GetPerson(ctx, id)
+}
+
+// insertPerson inserts a person row through x (a *sql.DB or *sql.Tx) and
+// returns the new person id.
+func insertPerson(ctx context.Context, x execer, in contact.PersonInput) (string, error) {
 	id := newID()
 	ts := formatTime(now())
-	_, err := s.db.ExecContext(ctx, `
+	_, err := x.ExecContext(ctx, `
 		INSERT INTO persons (id, display_name, given_name, family_name, notes, source, source_ref, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		id, in.DisplayName, in.GivenName, in.FamilyName, in.Notes, in.Source, in.SourceRef, ts, ts)
 	if err != nil {
-		return nil, errs.Internal(op, "failed to insert person", err)
+		return "", err
 	}
-
-	return s.GetPerson(ctx, id)
+	return id, nil
 }
 
 // GetPerson loads a person with its aliases, tags, classifications and
