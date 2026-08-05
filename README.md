@@ -44,7 +44,10 @@ may still change between beta releases.
 go install github.com/danieljustus/symaira-relate/cmd/symrelate@latest
 ```
 
-Requires Go 1.22+. `symrelate` builds with `CGO_ENABLED=0` and has no
+Prefer `go install`; prebuilt Linux/macOS/Windows binaries are attached to
+each [release](https://github.com/danieljustus/symaira-relate/releases).
+
+Requires Go 1.26.5+. `symrelate` builds with `CGO_ENABLED=0` and has no
 compile-time dependency on any other Symaira tool — it runs standalone with
 no other Symaira binary installed. See [ARCHITECTURE.md](ARCHITECTURE.md)
 for the standalone-first and data-ownership boundaries this implies.
