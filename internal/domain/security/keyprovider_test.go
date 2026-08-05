@@ -3,79 +3,93 @@ package security
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 )
 
-func TestStaticKeyProvider_UnavailableWhenEmpty(t *testing.T) {
-	_, _, err := StaticKeyProvider{}.Resolve(context.Background())
-	if !errors.Is(err, ErrKeyUnavailable) {
-		t.Fatalf("error = %v, want ErrKeyUnavailable", err)
+type keyProviderFunc func(context.Context) ([]byte, string, error)
+
+func (f keyProviderFunc) Resolve(ctx context.Context) ([]byte, string, error) {
+	return f(ctx)
+}
+
+func TestChain_UsesFirstSuccessAndHandlesUnavailableProviders(t *testing.T) {
+	ctx := context.Background()
+	key, source, err := Chain{
+		StaticKeyProvider{},
+		StaticKeyProvider{Passphrase: []byte("passphrase")},
+		keyProviderFunc(func(context.Context) ([]byte, string, error) {
+			t.Fatal("provider after success was called")
+			return nil, "", nil
+		}),
+	}.Resolve(ctx)
+	if err != nil || string(key) != "passphrase" || source != "explicit" {
+		t.Fatalf("successful chain = (%q, %q, %v), want passphrase/explicit/nil", key, source, err)
+	}
+
+	if _, _, err := (Chain{StaticKeyProvider{}}).Resolve(ctx); !errors.Is(err, ErrKeyUnavailable) {
+		t.Fatalf("all-unavailable chain error = %v, want ErrKeyUnavailable", err)
 	}
 }
 
-func TestEnvKeyProvider_UnavailableWhenUnset(t *testing.T) {
-	t.Setenv("SYMRELATE_TEST_PASSPHRASE_UNSET", "")
-	_, _, err := EnvKeyProvider{VarName: "SYMRELATE_TEST_PASSPHRASE_UNSET"}.Resolve(context.Background())
-	if !errors.Is(err, ErrKeyUnavailable) {
-		t.Fatalf("error = %v, want ErrKeyUnavailable", err)
+func TestChain_StopsOnUnexpectedError(t *testing.T) {
+	want := errors.New("provider failed")
+	_, _, err := Chain{keyProviderFunc(func(context.Context) ([]byte, string, error) {
+		return nil, "", want
+	}), StaticKeyProvider{Passphrase: []byte("unused")}}.Resolve(context.Background())
+	if !errors.Is(err, want) {
+		t.Fatalf("chain error = %v, want %v", err, want)
 	}
 }
 
-func TestEnvKeyProvider_ResolvesFromEnv(t *testing.T) {
-	t.Setenv("SYMRELATE_TEST_PASSPHRASE", "hunter2")
-	key, source, err := EnvKeyProvider{VarName: "SYMRELATE_TEST_PASSPHRASE"}.Resolve(context.Background())
-	if err != nil {
-		t.Fatalf("Resolve() error = %v", err)
+func TestStaticAndEnvKeyProviders(t *testing.T) {
+	if _, _, err := (StaticKeyProvider{}).Resolve(context.Background()); !errors.Is(err, ErrKeyUnavailable) {
+		t.Fatalf("empty static provider error = %v, want unavailable", err)
 	}
-	if string(key) != "hunter2" {
-		t.Errorf("key = %q, want hunter2", key)
+	key, source, err := (StaticKeyProvider{Passphrase: []byte("static")}).Resolve(context.Background())
+	if err != nil || string(key) != "static" || source != "explicit" {
+		t.Fatalf("static provider = (%q, %q, %v)", key, source, err)
 	}
-	if source == "" {
-		t.Error("source is empty, want a diagnostic label")
+
+	t.Setenv("TEST_SYMRELATE_PASSPHRASE", "environment")
+	key, source, err = (EnvKeyProvider{VarName: "TEST_SYMRELATE_PASSPHRASE"}).Resolve(context.Background())
+	if err != nil || string(key) != "environment" || source != "env:TEST_SYMRELATE_PASSPHRASE" {
+		t.Fatalf("env provider = (%q, %q, %v)", key, source, err)
+	}
+	if _, _, err := (EnvKeyProvider{VarName: "MISSING_SYMRELATE_PASSPHRASE"}).Resolve(context.Background()); !errors.Is(err, ErrKeyUnavailable) {
+		t.Fatalf("missing env provider error = %v, want unavailable", err)
 	}
 }
 
-// TestSymVaultKeyProvider_UnavailableWhenNotInstalled documents the
-// standalone fallback: when symvault is not on PATH (the case in this CI
-// environment and in every standalone install), Resolve must return
-// ErrKeyUnavailable immediately rather than blocking or erroring hard —
-// SymVault is a convenience, never a requirement.
-func TestSymVaultKeyProvider_UnavailableWhenNotInstalled(t *testing.T) {
-	t.Setenv("PATH", t.TempDir()) // guarantee no "symvault" binary is found
-	_, _, err := SymVaultKeyProvider{}.Resolve(context.Background())
-	if !errors.Is(err, ErrKeyUnavailable) {
-		t.Fatalf("error = %v, want ErrKeyUnavailable", err)
-	}
-}
-
-func TestChain_FallsThroughToStandaloneProvider(t *testing.T) {
+func TestSymVaultAndTerminalProvidersUnavailableWithoutExternalInput(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
-	chain := DefaultKeyProviders(nil) // no explicit passphrase either
-	if _, _, err := chain.Resolve(context.Background()); !errors.Is(err, ErrKeyUnavailable) {
-		t.Fatalf("error = %v, want ErrKeyUnavailable when no provider has a key", err)
+	if _, _, err := (SymVaultKeyProvider{}).Resolve(context.Background()); !errors.Is(err, ErrKeyUnavailable) {
+		t.Fatalf("missing SymVault error = %v, want unavailable", err)
 	}
 
-	chain = DefaultKeyProviders([]byte("explicit-passphrase"))
-	key, source, err := chain.Resolve(context.Background())
+	readEnd, writeEnd, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("Resolve() error = %v", err)
+		t.Fatalf("os.Pipe() error = %v", err)
 	}
-	if string(key) != "explicit-passphrase" || source != "explicit" {
-		t.Errorf("key=%q source=%q, want explicit-passphrase/explicit", key, source)
-	}
-}
-
-func TestChain_StopsOnNonUnavailableError(t *testing.T) {
-	boom := errors.New("boom")
-	chain := Chain{failingProvider{err: boom}, StaticKeyProvider{Passphrase: []byte("should-not-be-reached")}}
-	_, _, err := chain.Resolve(context.Background())
-	if !errors.Is(err, boom) {
-		t.Fatalf("error = %v, want boom (chain must not swallow non-ErrKeyUnavailable errors)", err)
+	defer readEnd.Close()
+	defer writeEnd.Close()
+	if _, _, err := (TerminalKeyProvider{StdinFunc: func() *os.File { return readEnd }}).Resolve(context.Background()); !errors.Is(err, ErrKeyUnavailable) {
+		t.Fatalf("non-terminal provider error = %v, want unavailable", err)
 	}
 }
 
-type failingProvider struct{ err error }
+func TestDefaultKeyProvidersIncludeExpectedFallbacks(t *testing.T) {
+	chain := DefaultKeyProviders([]byte("explicit"))
+	if len(chain) != 4 {
+		t.Fatalf("DefaultKeyProviders() length = %d, want 4", len(chain))
+	}
+	if _, ok := chain[0].(StaticKeyProvider); !ok {
+		t.Fatalf("first provider = %T, want StaticKeyProvider", chain[0])
+	}
 
-func (f failingProvider) Resolve(context.Context) ([]byte, string, error) {
-	return nil, "", f.err
+	confirmed := DefaultKeyProvidersConfirm(nil)
+	terminal, ok := confirmed[3].(TerminalKeyProvider)
+	if !ok || !terminal.Confirm {
+		t.Fatalf("confirm chain terminal provider = %#v, want confirming TerminalKeyProvider", confirmed[3])
+	}
 }
