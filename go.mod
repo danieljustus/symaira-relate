@@ -3,7 +3,7 @@ module github.com/danieljustus/symaira-relate
 go 1.26.5
 
 require (
-	github.com/danieljustus/symaira-corekit v0.8.0
+	github.com/danieljustus/symaira-corekit v0.9.1
 	github.com/emersion/go-vcard v0.0.0-20260618161152-d854b7e0e2d3
 	github.com/google/uuid v1.6.0
 	golang.org/x/crypto v0.54.0
