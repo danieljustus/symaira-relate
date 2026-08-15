@@ -6,6 +6,12 @@ are omitted until the first tagged release.
 
 ## [Unreleased]
 
+### Changed
+
+- Update `modernc.org/sqlite` to v1.56.0 (#77).
+- Update `github.com/danieljustus/symaira-corekit` to v0.9.1 (#78).
+- Update the Go toolchain to 1.26.6 (#79).
+
 ## [v0.2.1-beta.1] - 2026-08-05
 
 ### Fixed
