@@ -8,12 +8,10 @@ on:
       - '**.md'
       - 'LICENSE'
       - '.github/ISSUE_TEMPLATE/**'
+  # NOTE: no paths-ignore here — the 'main protection' ruleset requires the
+  # build-and-test and vulnerability-check contexts on every PR, so CI must
+  # always run (docs-only PRs otherwise block on checks that never report).
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '**.md'
-      - 'LICENSE'
-      - '.github/ISSUE_TEMPLATE/**'
 
 
 concurrency:
