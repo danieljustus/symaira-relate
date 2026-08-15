@@ -2,8 +2,10 @@ package importer
 
 import (
 	"context"
+	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	contactdomain "github.com/danieljustus/symaira-relate/internal/domain/contact"
@@ -392,5 +394,314 @@ func TestApply_ImportedPersonsAreReadableThroughContactService(t *testing.T) {
 		if _, err := contacts.ListMembershipsByPerson(ctx, full.ID); err != nil {
 			t.Fatalf("ListMembershipsByPerson(%s) error = %v", full.ID, err)
 		}
+	}
+}
+
+// TestApplyCreate_CreateFromRowFailureIsRecordedPerRow covers applyCreate's
+// createFromRow error branch (apply.go:76-79): the failed row must be counted
+// in RunResult.Failed and surfaced as a per-row ValidationIssue carrying the
+// row number and the underlying error, while Created stays untouched.
+//
+// A brand-new person row cannot violate any reachable constraint (persons has
+// no CHECK/UNIQUE constraints and every column is a plain string), so the
+// failure is forced through a committed transaction — the same white-box
+// helper approach quickadd_test.go documents for branches the public API
+// cannot reach.
+func TestApplyCreate_CreateFromRowFailureIsRecordedPerRow(t *testing.T) {
+	ctx := context.Background()
+	s := newFixture(t)
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatalf("BeginTx() error = %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("Commit() error = %v", err)
+	}
+
+	row := importerdomain.ImportRow{RowNumber: 4, DisplayName: "Failing Row"}
+	result := &importerdomain.RunResult{Source: importerdomain.SourceCSV}
+	s.applyCreate(ctx, tx, importerdomain.SourceCSV, row, result)
+
+	if result.Failed != 1 {
+		t.Errorf("result.Failed = %d, want 1", result.Failed)
+	}
+	if result.Created != 0 {
+		t.Errorf("result.Created = %d, want 0 (nothing may be created)", result.Created)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("len(result.Errors) = %d, want 1: %+v", len(result.Errors), result.Errors)
+	}
+	if got := result.Errors[0]; got.RowNumber != row.RowNumber || got.Field != "" || got.Message == "" {
+		t.Errorf("ValidationIssue = %+v, want RowNumber=%d with a non-empty message", got, row.RowNumber)
+	}
+}
+
+// TestApplyCreate_LinkSourceFailureIsRecordedPerRowAndKeepsPerson covers
+// applyCreate's linkSource error branch (apply.go:81-85): createFromRow has
+// already committed its person INSERT inside the transaction, and when the
+// source link then fails the row is counted as failed without rolling back
+// the already-succeeded creation and without aborting the run.
+//
+// A bogus SourceKind trips the import_sources.source_kind CHECK constraint;
+// this is the only deterministic way to make linkSource fail, and it exercises
+// the exact data-mutating path a real importer bug would take.
+func TestApplyCreate_LinkSourceFailureIsRecordedPerRowAndKeepsPerson(t *testing.T) {
+	ctx := context.Background()
+	s := newFixture(t)
+
+	row := importerdomain.ImportRow{RowNumber: 1, DisplayName: "Link Fail", SourceRef: "csv:link-fail"}
+	result := &importerdomain.RunResult{Source: importerdomain.SourceCSV}
+	err := sqlite.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		s.applyCreate(ctx, tx, importerdomain.SourceKind("bogus"), row, result)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WithTx() error = %v", err)
+	}
+
+	if result.Failed != 1 {
+		t.Errorf("result.Failed = %d, want 1", result.Failed)
+	}
+	if result.Created != 0 {
+		t.Errorf("result.Created = %d, want 0 (link failure means no successful create)", result.Created)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("len(result.Errors) = %d, want 1: %+v", len(result.Errors), result.Errors)
+	}
+	if got := result.Errors[0]; got.RowNumber != row.RowNumber || got.Field != "" || !strings.Contains(got.Message, "CHECK constraint") {
+		t.Errorf("ValidationIssue = %+v, want RowNumber=%d with the constraint error", got, row.RowNumber)
+	}
+
+	// The person INSERT from createFromRow must survive: a per-row failure
+	// only skips that row, it never aborts the run.
+	var count int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM persons WHERE display_name = ?", row.DisplayName).Scan(&count); err != nil {
+		t.Fatalf("query persons error = %v", err)
+	}
+	if count != 1 {
+		t.Errorf("persons with display_name %q = %d, want 1 (create must not be rolled back)", row.DisplayName, count)
+	}
+}
+
+// TestApply_MergeResolutionWithEmptyTargetIsRecorded covers applyMerge's
+// empty-target guard (apply.go:90-93): a merge resolution without a target
+// person id is a per-row failure with a Field-specific ValidationIssue, not a
+// silent no-op.
+func TestApply_MergeResolutionWithEmptyTargetIsRecorded(t *testing.T) {
+	ctx := context.Background()
+	s := newFixture(t)
+
+	existing, err := s.contacts.CreatePerson(ctx, contactPersonInput("Jordan Example"))
+	if err != nil {
+		t.Fatalf("CreatePerson() error = %v", err)
+	}
+	if _, err := s.contacts.AddPersonContactPoint(ctx, existing.ID, contactPointInput("jordan@example.com")); err != nil {
+		t.Fatalf("AddPersonContactPoint() error = %v", err)
+	}
+
+	row := importerdomain.ImportRow{RowNumber: 1, DisplayName: "Jordan Example", Emails: []string{"jordan@example.com"}, SourceRef: "csv:empty-target"}
+	plan, err := s.Plan(ctx, importerdomain.SourceCSV, []importerdomain.ImportRow{row}, nil)
+	if err != nil {
+		t.Fatalf("Plan() error = %v", err)
+	}
+	if len(plan.Duplicates) == 0 {
+		t.Fatal("Plan() found no duplicate for an exact email match")
+	}
+
+	result, err := s.Apply(ctx, plan, []importerdomain.RowResolution{
+		{RowNumber: 1, Resolution: importerdomain.ResolutionMerge, MergePersonID: ""},
+	})
+	if err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+	if result.Failed != 1 || result.Merged != 0 {
+		t.Fatalf("result = %+v, want 1 failed, 0 merged", result)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("len(result.Errors) = %d, want 1: %+v", len(result.Errors), result.Errors)
+	}
+	want := importerdomain.ValidationIssue{
+		RowNumber: 1,
+		Field:     "merge_person_id",
+		Message:   "merge resolution requires a target person id",
+	}
+	if got := result.Errors[0]; got != want {
+		t.Errorf("ValidationIssue = %+v, want %+v", got, want)
+	}
+
+	var personCount int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM persons").Scan(&personCount); err != nil {
+		t.Fatalf("query persons error = %v", err)
+	}
+	if personCount != 1 {
+		t.Errorf("persons after failed merge = %d, want still 1", personCount)
+	}
+}
+
+// TestApply_MergeResolutionWithMissingTargetIsRecorded covers applyMerge's
+// merge-with-missing-target branch (apply.go:95-99): merging into a person id
+// that does not exist is a per-row failure recorded in RunResult, and the row
+// must not create a new person.
+func TestApply_MergeResolutionWithMissingTargetIsRecorded(t *testing.T) {
+	ctx := context.Background()
+	s := newFixture(t)
+
+	existing, err := s.contacts.CreatePerson(ctx, contactPersonInput("Jordan Example"))
+	if err != nil {
+		t.Fatalf("CreatePerson() error = %v", err)
+	}
+	if _, err := s.contacts.AddPersonContactPoint(ctx, existing.ID, contactPointInput("jordan@example.com")); err != nil {
+		t.Fatalf("AddPersonContactPoint() error = %v", err)
+	}
+
+	row := importerdomain.ImportRow{RowNumber: 1, DisplayName: "Jordan Example", Emails: []string{"jordan@example.com"}, SourceRef: "csv:missing-target"}
+	plan, err := s.Plan(ctx, importerdomain.SourceCSV, []importerdomain.ImportRow{row}, nil)
+	if err != nil {
+		t.Fatalf("Plan() error = %v", err)
+	}
+	if len(plan.Duplicates) == 0 {
+		t.Fatal("Plan() found no duplicate for an exact email match")
+	}
+
+	result, err := s.Apply(ctx, plan, []importerdomain.RowResolution{
+		{RowNumber: 1, Resolution: importerdomain.ResolutionMerge, MergePersonID: "no-such-person"},
+	})
+	if err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+	if result.Failed != 1 || result.Merged != 0 {
+		t.Fatalf("result = %+v, want 1 failed, 0 merged", result)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("len(result.Errors) = %d, want 1: %+v", len(result.Errors), result.Errors)
+	}
+	if got := result.Errors[0]; got.RowNumber != 1 || !strings.Contains(got.Message, "merge target person does not exist") {
+		t.Errorf("ValidationIssue = %+v, want RowNumber=1 with missing-target message", got)
+	}
+
+	var personCount int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM persons").Scan(&personCount); err != nil {
+		t.Fatalf("query persons error = %v", err)
+	}
+	if personCount != 1 {
+		t.Errorf("persons after failed merge = %d, want still 1", personCount)
+	}
+}
+
+// TestApplyMerge_LinkSourceFailureIsRecordedPerRow covers applyMerge's
+// linkSource error branch (apply.go:100-104): when the merge itself succeeds
+// but the source link then fails, the row is counted as failed with the
+// constraint error, and the merged contact points survive.
+func TestApplyMerge_LinkSourceFailureIsRecordedPerRow(t *testing.T) {
+	ctx := context.Background()
+	s := newFixture(t)
+
+	existing, err := s.contacts.CreatePerson(ctx, contactPersonInput("Jordan Example"))
+	if err != nil {
+		t.Fatalf("CreatePerson() error = %v", err)
+	}
+	if _, err := s.contacts.AddPersonContactPoint(ctx, existing.ID, contactPointInput("jordan@example.com")); err != nil {
+		t.Fatalf("AddPersonContactPoint() error = %v", err)
+	}
+
+	row := importerdomain.ImportRow{RowNumber: 1, DisplayName: "Jordan Example", Emails: []string{"jordan@example.com"}, Phones: []string{"+49 30 123456"}, SourceRef: "csv:merge-link-fail"}
+	result := &importerdomain.RunResult{Source: importerdomain.SourceCSV}
+	err = sqlite.WithTx(ctx, s.db, func(tx *sql.Tx) error {
+		s.applyMerge(ctx, tx, importerdomain.SourceKind("bogus"), row, existing.ID, result)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WithTx() error = %v", err)
+	}
+
+	if result.Failed != 1 || result.Merged != 0 {
+		t.Fatalf("result = %+v, want 1 failed, 0 merged", result)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("len(result.Errors) = %d, want 1: %+v", len(result.Errors), result.Errors)
+	}
+	if got := result.Errors[0]; got.RowNumber != row.RowNumber || got.Field != "" || !strings.Contains(got.Message, "CHECK constraint") {
+		t.Errorf("ValidationIssue = %+v, want RowNumber=%d with the constraint error", got, row.RowNumber)
+	}
+
+	// The mergeIntoRow contact-point INSERT must survive the link failure.
+	var phoneCount int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM contact_points WHERE person_id = ? AND kind = ?", existing.ID, contactdomain.ContactPointPhone).Scan(&phoneCount); err != nil {
+		t.Fatalf("query contact points error = %v", err)
+	}
+	if phoneCount != 1 {
+		t.Errorf("phones on target = %d, want 1 (merge must not be rolled back)", phoneCount)
+	}
+}
+
+// TestApply_MergeSuccessfullyMergesContactPointsAndLinksSource covers
+// applyMerge's happy path (apply.go:100-105): the merge adds the row's contact
+// points to the target person, records Merged++, and links the import source
+// to the target person.
+func TestApply_MergeSuccessfullyMergesContactPointsAndLinksSource(t *testing.T) {
+	ctx := context.Background()
+	s := newFixture(t)
+
+	existing, err := s.contacts.CreatePerson(ctx, contactPersonInput("Jordan Example"))
+	if err != nil {
+		t.Fatalf("CreatePerson() error = %v", err)
+	}
+	if _, err := s.contacts.AddPersonContactPoint(ctx, existing.ID, contactPointInput("jordan@example.com")); err != nil {
+		t.Fatalf("AddPersonContactPoint() error = %v", err)
+	}
+
+	row := importerdomain.ImportRow{
+		RowNumber: 1, DisplayName: "Jordan Example",
+		Emails: []string{"jordan@example.com"}, Phones: []string{"+49 30 123456"},
+		SourceRef: "csv:merge-ok",
+	}
+	plan, err := s.Plan(ctx, importerdomain.SourceCSV, []importerdomain.ImportRow{row}, nil)
+	if err != nil {
+		t.Fatalf("Plan() error = %v", err)
+	}
+	if len(plan.Duplicates) == 0 {
+		t.Fatal("Plan() found no duplicate for an exact email match")
+	}
+
+	result, err := s.Apply(ctx, plan, []importerdomain.RowResolution{
+		{RowNumber: 1, Resolution: importerdomain.ResolutionMerge, MergePersonID: existing.ID},
+	})
+	if err != nil {
+		t.Fatalf("Apply() error = %v", err)
+	}
+	if result.Merged != 1 || result.Failed != 0 {
+		t.Fatalf("result = %+v, want 1 merged, 0 failed", result)
+	}
+	if len(result.Errors) != 0 {
+		t.Fatalf("result.Errors = %+v, want none", result.Errors)
+	}
+
+	// Merge must not create a new person.
+	var personCount int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM persons").Scan(&personCount); err != nil {
+		t.Fatalf("query persons error = %v", err)
+	}
+	if personCount != 1 {
+		t.Errorf("persons after merge = %d, want still 1", personCount)
+	}
+
+	// The row's phone must now live on the target person (the email already
+	// existed and is preserved).
+	var phoneCount int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM contact_points WHERE person_id = ? AND kind = ?", existing.ID, contactdomain.ContactPointPhone).Scan(&phoneCount); err != nil {
+		t.Fatalf("query contact points error = %v", err)
+	}
+	if phoneCount != 1 {
+		t.Errorf("phones on target = %d, want 1 (merged)", phoneCount)
+	}
+
+	// The import source must be linked to the target person for idempotency.
+	var linkedPersonID string
+	if err := s.db.QueryRowContext(ctx, "SELECT person_id FROM import_sources WHERE source_kind = ? AND source_ref = ?", importerdomain.SourceCSV, row.SourceRef).Scan(&linkedPersonID); err != nil {
+		t.Fatalf("query import_sources error = %v", err)
+	}
+	if linkedPersonID != existing.ID {
+		t.Errorf("import_sources person_id = %q, want %q", linkedPersonID, existing.ID)
 	}
 }
