@@ -88,20 +88,20 @@ The verification run for `v0.1.0-beta.1` was executed on macOS with Go 1.22+.
 | 1 | Clean-machine build | **PASS** | Runs and builds with `CGO_ENABLED=0 go build ./cmd/symrelate`. |
 | 2 | `doctor` succeeds on fresh profile | **PASS** | Running `symrelate doctor` outputs `ok` and status information. |
 | 3 | `version --json` reports three versions | **PASS** | Returns valid JSON containing `tool`, `version`, `schema_version`, and `api_version`. |
-| 4 | Create, show, update, list, delete person | **PASS** | Verified via `TestContactLifecycle_EndToEnd` in [contact_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/contact_cmd_test.go). |
-| 5 | Create, show, update, list, delete organization | **PASS** | Verified via `TestContactLifecycle_EndToEnd` in [contact_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/contact_cmd_test.go). |
+| 4 | Create, show, update, list, delete person | **PASS** | Verified via `TestContactLifecycle_EndToEnd` in [contact_cmd_test.go](../internal/cli/contact_cmd_test.go). |
+| 5 | Create, show, update, list, delete organization | **PASS** | Verified via `TestContactLifecycle_EndToEnd` in [contact_cmd_test.go](../internal/cli/contact_cmd_test.go). |
 | 6 | Membership linking role change | **PASS** | Verified via database relationship mappings and `TestContactLifecycle_EndToEnd`. |
 | 7 | Relationship, interaction, follow-up timeline | **PASS** | Covered by `TestTimeline` in `internal/cli/timeline_cmd_test.go`. |
-| 8 | `--human` output vs default JSON | **PASS** | Verified via `TestHumanFlag_IsReadableNotJSON` in [contact_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/contact_cmd_test.go). |
+| 8 | `--human` output vs default JSON | **PASS** | Verified via `TestHumanFlag_IsReadableNotJSON` in [contact_cmd_test.go](../internal/cli/contact_cmd_test.go). |
 | 9 | vCard dry-run writes nothing | **PASS** | Covered by `TestImport_VCard_DryRun` in `internal/service/importer/importer_test.go`. |
 | 10 | vCard apply creates correct count | **PASS** | Verified by tests and manual run using `testdata/import/sample.vcf`. |
 | 11 | Re-import is idempotent | **PASS** | Covered by tests in `internal/service/importer/importer_test.go`. |
 | 12 | Duplicate candidate requires `--resolve` | **PASS** | Verified by duplicate candidate checks in importer tests. |
 | 13 | CSV auto-detected column mapping | **PASS** | Covered by `TestImport_CSV_AutoDetect` in `internal/service/importer/importer_test.go`. |
-| 14 | Backup round-trips | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/backup_cmd_test.go). |
-| 15 | Wrong passphrase rejected | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/backup_cmd_test.go). |
-| 16 | Erase cascades and audits | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/backup_cmd_test.go). |
-| 17 | No contact-point in error text | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](file:///Users/daniel/Dev/Symaira%20Dev/symaira-relate/internal/cli/backup_cmd_test.go). |
+| 14 | Backup round-trips | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](../internal/cli/backup_cmd_test.go). |
+| 15 | Wrong passphrase rejected | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](../internal/cli/backup_cmd_test.go). |
+| 16 | Erase cascades and audits | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](../internal/cli/backup_cmd_test.go). |
+| 17 | No contact-point in error text | **PASS** | Verified via `TestBackupRestoreAndErase_CLI` in [backup_cmd_test.go](../internal/cli/backup_cmd_test.go). |
 | 18 | `symrelate mcp` stdout protocol-clean | **PASS** | Covered by stdout intercept tests in `internal/mcp/server_test.go`. |
 | 19 | MCP client list and call tools | **PASS** | Verified by client mock tool call suite in `internal/mcp/server_test.go`. |
 | 20 | Console binds loopback only | **PASS** | Verified by socket listener binding assertions in `internal/console/server_test.go`. |
